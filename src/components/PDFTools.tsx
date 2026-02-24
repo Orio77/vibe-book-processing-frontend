@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Sparkles, BookOpen, Lightbulb, Target, Layers, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 
 interface PDFToolsProps {
     pdfId: number;
@@ -7,223 +8,242 @@ interface PDFToolsProps {
 
 const API_URL = 'http://localhost:8080/api/pdf/process';
 
+// Toast Notification Component
+const Toast = ({ message, type, onClose }: { message: string, type: 'success' | 'error', onClose: () => void }) => {
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            onClose();
+        }, 3000);
+        return () => clearTimeout(timer);
+    }, [onClose]);
+
+    return (
+        <div className={`fixed bottom-4 right-4 flex items-center p-4 rounded-lg shadow-lg border z-50 animate-in slide-in-from-bottom-5 fade-in duration-300 ${type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'
+            }`}>
+            {type === 'success' ? <CheckCircle2 className="w-5 h-5 mr-3 text-green-500" /> : <XCircle className="w-5 h-5 mr-3 text-red-500" />}
+            <p className="text-sm font-medium">{message}</p>
+            <button onClick={onClose} className="ml-4 text-gray-400 hover:text-gray-600">
+                <XCircle className="w-4 h-4" />
+            </button>
+        </div>
+    );
+};
+
 export const PDFTools: React.FC<PDFToolsProps> = ({ pdfId, chapterId }) => {
-    const [loading, setLoading] = useState(false);
-    const [result, setResult] = useState<string | null>(null);
+    const [loadingAction, setLoadingAction] = useState<string | null>(null);
+    const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
     const [bookContext, setBookContext] = useState(false);
+
+    const showToast = (message: string, type: 'success' | 'error') => {
+        setToast({ message, type });
+    };
 
     const handleChapterSummary = async () => {
         if (!chapterId) return;
-        setLoading(true);
-        setResult(null);
+        setLoadingAction('chapter-summary');
         try {
             // Mock API call
             console.log(`POST ${API_URL}/chapter/summary?pdfId=${pdfId}&chapterId=${chapterId}&bookContext=${bookContext}`);
-
-            // Simulating a delay
             await new Promise(resolve => setTimeout(resolve, 1000));
-
-            setResult(`Chapter summary created successfully! (Context: ${bookContext ? 'Book' : 'Chapter only'})`);
+            showToast(`Chapter summary created! (${bookContext ? 'With Book Context' : 'Chapter only'})`, 'success');
         } catch (error) {
             console.error(error);
-            setResult('Error creating chapter summary.');
+            showToast('Error creating chapter summary.', 'error');
         } finally {
-            setLoading(false);
+            setLoadingAction(null);
         }
     };
 
     const handleBookSummary = async () => {
-        setLoading(true);
-        setResult(null);
+        setLoadingAction('book-summary');
         try {
             // Mock API call
             console.log(`POST ${API_URL}/book/summary?pdfId=${pdfId}`);
-
-            // Simulating a delay
             await new Promise(resolve => setTimeout(resolve, 1500));
-
-            setResult('Book summary created successfully!');
+            showToast('Book summary created successfully!', 'success');
         } catch (error) {
             console.error(error);
-            setResult('Error creating book summary.');
+            showToast('Error creating book summary.', 'error');
         } finally {
-            setLoading(false);
+            setLoadingAction(null);
         }
     };
 
     const handleMarkIdeas = async () => {
         if (!chapterId) return;
-        setLoading(true);
-        setResult(null);
+        setLoadingAction('mark-ideas');
         try {
             // Mock API call
             console.log(`POST ${API_URL}/chapter/ideas?pdfId=${pdfId}&chapterId=${chapterId}`);
-
-            // Simulating a delay
             await new Promise(resolve => setTimeout(resolve, 1000));
-
-            setResult('Key ideas in the chapter have been marked!');
+            showToast('Key ideas have been marked!', 'success');
         } catch (error) {
             console.error(error);
-            setResult('Error marking ideas in the chapter.');
+            showToast('Error marking ideas.', 'error');
         } finally {
-            setLoading(false);
+            setLoadingAction(null);
         }
     };
 
     const handleMarkExamples = async () => {
         if (!chapterId) return;
-        setLoading(true);
-        setResult(null);
+        setLoadingAction('mark-examples');
         try {
             // Mock API call
             console.log(`POST ${API_URL}/chapter/examples?pdfId=${pdfId}&chapterId=${chapterId}`);
-
-            // Simulating a delay
             await new Promise(resolve => setTimeout(resolve, 1000));
-
-            setResult('Examples in the chapter have been marked!');
+            showToast('Examples have been marked!', 'success');
         } catch (error) {
             console.error(error);
-            setResult('Error marking examples in the chapter.');
+            showToast('Error marking examples.', 'error');
         } finally {
-            setLoading(false);
+            setLoadingAction(null);
         }
     };
 
     const handleProcessContext = async () => {
         if (!chapterId) return;
-        setLoading(true);
-        setResult(null);
+        setLoadingAction('process-context');
         try {
             // Mock API call
             console.log(`POST ${API_URL}/chapter/context?pdfId=${pdfId}&chapterId=${chapterId}&bookContext=${bookContext}`);
-
-            // Simulating a delay
             await new Promise(resolve => setTimeout(resolve, 1000));
-
-            setResult(`Context processing complete! (Context: ${bookContext ? 'Book' : 'Chapter only'})`);
+            showToast(`Context processing complete!`, 'success');
         } catch (error) {
             console.error(error);
-            setResult('Error processing context.');
+            showToast('Error processing context.', 'error');
         } finally {
-            setLoading(false);
+            setLoadingAction(null);
         }
     };
 
+    const ToolButton = ({
+        id,
+        icon: Icon,
+        label,
+        onClick,
+        disabled,
+        colorClass,
+        bgClass,
+        hoverClass
+    }: any) => {
+        const isLoading = loadingAction === id;
+        const isDisabled = disabled || loadingAction !== null;
+
+        return (
+            <button
+                onClick={onClick}
+                disabled={isDisabled}
+                className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all duration-200 group
+                    ${isDisabled
+                        ? 'bg-slate-50 border-slate-100 text-slate-400 cursor-not-allowed'
+                        : `bg-white border-slate-200 text-slate-700 hover:border-${colorClass}-300 hover:shadow-sm ${hoverClass}`
+                    }
+                `}
+            >
+                <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-lg ${isDisabled ? 'bg-slate-100 text-slate-400' : bgClass} transition-colors`}>
+                        {isLoading ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                            <Icon className="w-4 h-4" />
+                        )}
+                    </div>
+                    <span className="text-sm font-medium">{label}</span>
+                </div>
+                {!isDisabled && !isLoading && (
+                    <span className={`text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity text-${colorClass}-600`}>
+                        Run →
+                    </span>
+                )}
+            </button>
+        );
+    };
+
     return (
-        <div className="bg-white p-4 rounded-lg shadow-md mt-6">
-            <h3 className="text-lg font-semibold mb-4 text-gray-800">PDF Tools</h3>
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-blue-500" />
+                <h3 className="text-sm font-semibold text-slate-800 uppercase tracking-wider">AI Tools</h3>
+            </div>
 
-            {/* Feature 1: Chapter Summary */}
-            <div className="mb-6 p-4 border rounded-md bg-gray-50">
-                <h4 className="font-medium text-gray-700 mb-2">Chapter Summary</h4>
-                <div className="flex items-center gap-4 mb-3">
-                    <label className="flex items-center text-sm text-gray-600">
+            <div className="p-4 space-y-4">
+                {/* Context Toggle */}
+                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <span className="text-sm font-medium text-slate-700">Include Book Context</span>
+                    <label className="relative inline-flex items-center cursor-pointer">
                         <input
                             type="checkbox"
+                            className="sr-only peer"
                             checked={bookContext}
                             onChange={(e) => setBookContext(e.target.checked)}
-                            className="mr-2 h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
                         />
-                        Include Book Context
+                        <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
                     </label>
                 </div>
-                <button
-                    onClick={handleChapterSummary}
-                    disabled={loading || !chapterId}
-                    className={`w-full py-2 px-4 rounded font-medium text-white 
-                        ${loading || !chapterId
-                            ? 'bg-blue-300 cursor-not-allowed'
-                            : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'}`}
-                >
-                    {loading ? 'Processing...' : 'Create Summary'}
-                </button>
-                {!chapterId && <p className="text-xs text-amber-600 mt-2">Please navigate to a chapter to use this tool.</p>}
-            </div>
 
-            {/* Feature 2: Book Summary */}
-            <div className="mb-6 p-4 border rounded-md bg-gray-50">
-                <h4 className="font-medium text-gray-700 mb-2">Book Summary</h4>
-                <p className="text-xs text-gray-500 mb-3">Create a comprehensive summary of the entire book.</p>
-                <button
-                    onClick={handleBookSummary}
-                    disabled={loading}
-                    className={`w-full py-2 px-4 rounded font-medium text-white 
-                        ${loading
-                            ? 'bg-purple-300 cursor-not-allowed'
-                            : 'bg-purple-600 hover:bg-purple-700 focus:ring-4 focus:ring-purple-300'}`}
-                >
-                    {loading ? 'Processing...' : 'Create Book Summary'}
-                </button>
-            </div>
+                <div className="space-y-2">
+                    <ToolButton
+                        id="chapter-summary"
+                        icon={BookOpen}
+                        label="Chapter Summary"
+                        onClick={handleChapterSummary}
+                        disabled={!chapterId}
+                        colorClass="blue"
+                        bgClass="bg-blue-50 text-blue-600 group-hover:bg-blue-100"
+                        hoverClass="hover:bg-blue-50/30"
+                    />
 
-            {/* Feature 3: Mark Ideas */}
-            <div className="mb-6 p-4 border rounded-md bg-gray-50">
-                <h4 className="font-medium text-gray-700 mb-2">Mark Ideas</h4>
-                <p className="text-xs text-gray-500 mb-3">Highlight key ideas within the current chapter.</p>
-                <button
-                    onClick={handleMarkIdeas}
-                    disabled={loading || !chapterId}
-                    className={`w-full py-2 px-4 rounded font-medium text-white 
-                        ${loading || !chapterId
-                            ? 'bg-amber-300 cursor-not-allowed'
-                            : 'bg-amber-500 hover:bg-amber-600 focus:ring-4 focus:ring-amber-300'}`}
-                >
-                    {loading ? 'Processing...' : 'Mark Ideas'}
-                </button>
-                {!chapterId && <p className="text-xs text-amber-600 mt-2">Please navigate to a chapter to use this tool.</p>}
-            </div>
+                    <ToolButton
+                        id="book-summary"
+                        icon={Layers}
+                        label="Book Summary"
+                        onClick={handleBookSummary}
+                        disabled={false}
+                        colorClass="purple"
+                        bgClass="bg-purple-50 text-purple-600 group-hover:bg-purple-100"
+                        hoverClass="hover:bg-purple-50/30"
+                    />
 
-            {/* Feature 4: Mark Examples */}
-            <div className="mb-6 p-4 border rounded-md bg-gray-50">
-                <h4 className="font-medium text-gray-700 mb-2">Mark Examples</h4>
-                <p className="text-xs text-gray-500 mb-3">Highlight examples within the current chapter.</p>
-                <button
-                    onClick={handleMarkExamples}
-                    disabled={loading || !chapterId}
-                    className={`w-full py-2 px-4 rounded font-medium text-white 
-                        ${loading || !chapterId
-                            ? 'bg-teal-300 cursor-not-allowed'
-                            : 'bg-teal-500 hover:bg-teal-600 focus:ring-4 focus:ring-teal-300'}`}
-                >
-                    {loading ? 'Processing...' : 'Mark Examples'}
-                </button>
-                {!chapterId && <p className="text-xs text-amber-600 mt-2">Please navigate to a chapter to use this tool.</p>}
-            </div>
+                    <ToolButton
+                        id="mark-ideas"
+                        icon={Lightbulb}
+                        label="Extract Key Ideas"
+                        onClick={handleMarkIdeas}
+                        disabled={!chapterId}
+                        colorClass="amber"
+                        bgClass="bg-amber-50 text-amber-600 group-hover:bg-amber-100"
+                        hoverClass="hover:bg-amber-50/30"
+                    />
 
-            {/* Feature 5: Process Context */}
-            <div className="mb-6 p-4 border rounded-md bg-gray-50">
-                <h4 className="font-medium text-gray-700 mb-2">Process Context</h4>
-                <div className="flex items-center gap-4 mb-3">
-                    <label className="flex items-center text-sm text-gray-600">
-                        <input
-                            type="checkbox"
-                            checked={bookContext}
-                            onChange={(e) => setBookContext(e.target.checked)}
-                            className="mr-2 h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                        />
-                        Include Book Context
-                    </label>
+                    <ToolButton
+                        id="mark-examples"
+                        icon={Target}
+                        label="Find Examples"
+                        onClick={handleMarkExamples}
+                        disabled={!chapterId}
+                        colorClass="emerald"
+                        bgClass="bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100"
+                        hoverClass="hover:bg-emerald-50/30"
+                    />
                 </div>
-                <button
-                    onClick={handleProcessContext}
-                    disabled={loading || !chapterId}
-                    className={`w-full py-2 px-4 rounded font-medium text-white 
-                        ${loading || !chapterId
-                            ? 'bg-indigo-300 cursor-not-allowed'
-                            : 'bg-indigo-600 hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-300'}`}
-                >
-                    {loading ? 'Processing...' : 'Process Context'}
-                </button>
-                {!chapterId && <p className="text-xs text-amber-600 mt-2">Please navigate to a chapter to use this tool.</p>}
+
+                {!chapterId && (
+                    <div className="mt-4 p-3 bg-amber-50 border border-amber-100 rounded-lg flex items-start gap-2">
+                        <Lightbulb className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                        <p className="text-xs text-amber-700 leading-relaxed">
+                            Select a chapter from the table of contents to enable chapter-specific tools.
+                        </p>
+                    </div>
+                )}
             </div>
 
-            {/* Results Display */}
-            {result && (
-                <div className="mt-4 p-3 bg-green-50 text-green-800 rounded border border-green-200 text-sm">
-                    {result}
-                </div>
+            {toast && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    onClose={() => setToast(null)}
+                />
             )}
         </div>
     );

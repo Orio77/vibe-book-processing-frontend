@@ -1,8 +1,7 @@
-
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link, useLocation } from 'react-router-dom';
-import { Book, Trash2, BookOpen } from 'lucide-react';
+import { Book, Trash2, BookOpen, FileText, Plus, Clock } from 'lucide-react';
 
 const API_URL = 'http://localhost:8080/api/pdf';
 
@@ -36,7 +35,8 @@ const PDFList = () => {
         fetchPdfs();
     }, [location]);
 
-    const handleDelete = async (id: number) => {
+    const handleDelete = async (id: number, e: React.MouseEvent) => {
+        e.preventDefault(); // Prevent navigation if clicking delete on a Link wrapper
         if (!window.confirm('Are you sure you want to delete this PDF?')) return;
         try {
             await axios.delete(`${API_URL}/delete/${id}`);
@@ -53,74 +53,102 @@ const PDFList = () => {
         }
     };
 
-    if (loading) return <div className="text-center mt-10">Loading PDFs...</div>;
+    if (loading) return (
+        <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+        </div>
+    );
 
     return (
-        <div className="container mx-auto px-4 sm:px-8">
-            <div className="py-8">
-                <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-semibold leading-tight">Available Books</h2>
-                    <Link to="/upload" className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded inline-flex items-center">
-                        <Book className="w-4 h-4 mr-2" /> Add New
+        <div className="w-full">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+                <div>
+                    <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Your Library</h2>
+                    <p className="text-slate-500 mt-1">Manage and read your uploaded books</p>
+                </div>
+                <Link
+                    to="/upload"
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-5 rounded-lg inline-flex items-center transition-colors shadow-sm hover:shadow"
+                >
+                    <Plus className="w-5 h-5 mr-2" /> Add New Book
+                </Link>
+            </div>
+
+            {pdfs.length === 0 ? (
+                <div className="text-center py-16 px-6 bg-white rounded-2xl border-2 border-dashed border-slate-200">
+                    <div className="mx-auto w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-4">
+                        <BookOpen className="w-8 h-8 text-blue-500" />
+                    </div>
+                    <h3 className="text-lg font-medium text-slate-900 mb-2">Your library is empty</h3>
+                    <p className="text-slate-500 mb-6 max-w-sm mx-auto">
+                        Upload your first PDF book to start reading, analyzing, and extracting insights.
+                    </p>
+                    <Link
+                        to="/upload"
+                        className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 transition-colors"
+                    >
+                        Upload a PDF
                     </Link>
                 </div>
+            ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {pdfs.map((pdf) => (
+                        <Link
+                            to={`/read/${pdf.id}`}
+                            key={pdf.id}
+                            className="group flex flex-col bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden hover:border-blue-300"
+                        >
+                            {/* Book Cover Placeholder */}
+                            <div className="aspect-[3/4] bg-gradient-to-br from-slate-100 to-slate-200 relative flex items-center justify-center p-6 border-b border-slate-100">
+                                <div className="absolute inset-0 bg-blue-600/0 group-hover:bg-blue-600/5 transition-colors duration-200" />
+                                <div className="w-full h-full bg-white shadow-sm rounded border border-slate-200 flex flex-col items-center justify-center p-4 text-center relative overflow-hidden">
+                                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-slate-300 to-slate-400" /> {/* Spine effect */}
+                                    <FileText className="w-10 h-10 text-slate-300 mb-3" />
+                                    <span className="text-xs font-medium text-slate-500 uppercase tracking-wider line-clamp-3">
+                                        {pdf.title || `Book ${pdf.id}`}
+                                    </span>
+                                </div>
+                            </div>
 
-                {pdfs.length === 0 ? (
-                    <div className="text-center p-10 bg-white rounded shadow text-gray-500">
-                        No PDFs found. Upload one to get started!
-                    </div>
-                ) : (
-                    <div className="-mx-4 sm:-mx-8 px-4 sm:px-8 py-4 overflow-x-auto">
-                        <div className="inline-block min-w-full shadow rounded-lg overflow-hidden">
-                            <table className="min-w-full leading-normal">
-                                <thead>
-                                    <tr>
-                                        <th className="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                                            Title / Filename
-                                        </th>
-                                        <th className="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                                            ID
-                                        </th>
-                                        <th className="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                                            Actions
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {pdfs.map((pdf) => (
-                                        <tr key={pdf.id}>
-                                            <td className="px-5 py-5 border-b border-gray-200 bg-white text-sm">
-                                                <div className="flex items-center">
-                                                    <div className="flex-shrink-0 w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-500">
-                                                        <BookOpen size={20} />
-                                                    </div>
-                                                    <div className="ml-3">
-                                                        <p className="text-gray-900 whitespace-no-wrap">
-                                                            {pdf.title || `Book ${pdf.id}`}
-                                                            {pdf.totalPages != null && <span className="ml-2 text-xs text-gray-400">({pdf.totalPages} pages)</span>}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-5 py-5 border-b border-gray-200 bg-white text-sm">
-                                                <p className="text-gray-900 whitespace-no-wrap">{pdf.id}</p>
-                                            </td>
-                                            <td className="px-5 py-5 border-b border-gray-200 bg-white text-sm text-right">
-                                                <Link to={`/read/${pdf.id}`} className="text-blue-600 hover:text-blue-900 mr-4 inline-block">
-                                                    Read
-                                                </Link>
-                                                <button onClick={() => handleDelete(pdf.id)} className="text-red-600 hover:text-red-900 inline-block">
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )}
-            </div>
+                            {/* Book Details */}
+                            <div className="p-4 flex-1 flex flex-col">
+                                <h3 className="font-semibold text-slate-900 line-clamp-1 mb-1 group-hover:text-blue-600 transition-colors">
+                                    {pdf.title || `Book ${pdf.id}`}
+                                </h3>
+                                <div className="flex items-center text-xs text-slate-500 mb-4 mt-auto pt-2">
+                                    <span className="flex items-center">
+                                        <FileText className="w-3.5 h-3.5 mr-1" />
+                                        {pdf.totalPages != null ? `${pdf.totalPages} pages` : 'Unknown pages'}
+                                    </span>
+                                    {pdf.createdAt && (
+                                        <>
+                                            <span className="mx-2">•</span>
+                                            <span className="flex items-center">
+                                                <Clock className="w-3.5 h-3.5 mr-1" />
+                                                {new Date(pdf.createdAt).toLocaleDateString()}
+                                            </span>
+                                        </>
+                                    )}
+                                </div>
+
+                                {/* Actions */}
+                                <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                                    <span className="text-sm font-medium text-blue-600 flex items-center">
+                                        Read <span className="ml-1 group-hover:translate-x-1 transition-transform">→</span>
+                                    </span>
+                                    <button
+                                        onClick={(e) => handleDelete(pdf.id, e)}
+                                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                        title="Delete book"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+                        </Link>
+                    ))}
+                </div>
+            )}
         </div>
     );
 };
