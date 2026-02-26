@@ -1,0 +1,207 @@
+import type React from 'react';
+import { useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Upload, Loader2 } from 'lucide-react';
+import * as pdfjsLib from 'pdfjs-dist';
+import { uploadPdf } from '@/lib/api';
+import { ROUTES } from '@/lib/constants';
+import { ErrorAlert } from '@/components/ui';
+import { Dropzone, ChapterRangeEditor } from './upload';
+import type { ChapterPageRange, ChapterRangeInput } from '@/types';
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+    'pdfjs-dist/build/pdf.worker.mjs',
+    import.meta.url,
+).toString();
+
+function getSubmitButtonClass(file: File | null, uploading: boolean): string {
+    if (!file) return 'bg-slate-300 cursor-not-allowed';
+    if (uploading) return 'bg-blue-500 cursor-wait';
+    return 'bg-blue-600 hover:bg-blue-700 hover:shadow-md active:scale-[0.99]';
+}
+
+const UploadPDF = () => {
+    const [file, setFile] = useState<File | null>(null);
+    const [uploading, setUploading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [pageCount, setPageCount] = useState<number | null>(null);
+    const [chapterRanges, setChapterRanges] = useState<ChapterRangeInput[]>([]);
+    const [isDragging, setIsDragging] = useState(false);
+    const navigate = useNavigate();
+
+    // -----------------------------------------------------------------------
+    // File handling
+    // -----------------------------------------------------------------------
+
+    const processFile = useCallback(async (selected: File) => {
+        setFile(selected);
+        setPageCount(null);
+        setError(null);
+        try {
+            const arrayBuffer = await selected.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            setPageCount(pdf.numPages);
+        } catch {
+            // Non-critical: page count stays null if pdf.js can't read it
+        }
+    }, []);
+
+    const handleDragOver = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragging(true);
+    }, []);
+
+    const handleDragLeave = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragging(false);
+    }, []);
+
+    const handleDrop = useCallback(
+        async (e: React.DragEvent) => {
+            e.preventDefault();
+            setIsDragging(false);
+            const droppedFile = e.dataTransfer.files?.[0];
+            if (droppedFile?.type === 'application/pdf') {
+                await processFile(droppedFile);
+            } else {
+                setError('Please upload a valid PDF file.');
+            }
+        },
+        [processFile],
+    );
+
+    const handleFileChange = useCallback(
+        async (e: React.ChangeEvent<HTMLInputElement>) => {
+            if (!e.target.files?.length) return;
+            await processFile(e.target.files[0]);
+        },
+        [processFile],
+    );
+
+    // -----------------------------------------------------------------------
+    // Chapter range helpers
+    // -----------------------------------------------------------------------
+
+    const addChapterRange = () => {
+        setChapterRanges((prev) => [
+            ...prev,
+            { startPage: '', endPage: pageCount == null ? '' : String(pageCount) },
+        ]);
+    };
+
+    const updateChapterRange = (
+        index: number,
+        field: keyof ChapterRangeInput,
+        value: string,
+    ) => {
+        setChapterRanges((prev) => {
+            const updated = [...prev];
+            updated[index] = { ...updated[index], [field]: value };
+            return updated;
+        });
+    };
+
+    const removeChapterRange = (index: number) => {
+        setChapterRanges((prev) => prev.filter((_, j) => j !== index));
+    };
+
+    // -----------------------------------------------------------------------
+    // Upload
+    // -----------------------------------------------------------------------
+
+    const handleUpload = async (e: React.SyntheticEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        if (!file) return;
+
+        setUploading(true);
+        setError(null);
+
+        const ranges: ChapterPageRange[] =
+            chapterRanges.length > 0
+                ? chapterRanges.map((r) => ({
+                    startPage: Number(r.startPage),
+                    endPage: Number(r.endPage),
+                }))
+                : [{ startPage: 1, endPage: pageCount ?? 1 }];
+
+        try {
+            const newId = await uploadPdf(file, ranges);
+            navigate(ROUTES.readById(newId));
+        } catch (err: unknown) {
+            console.error(err);
+            const axiosErr = err as { response?: { data?: { message?: string } } };
+            setError(axiosErr.response?.data?.message ?? 'Failed to upload PDF');
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    // -----------------------------------------------------------------------
+    // Render
+    // -----------------------------------------------------------------------
+
+    return (
+        <div className="max-w-2xl mx-auto mt-8 sm:mt-12">
+            <div className="bg-white p-8 sm:p-10 rounded-2xl shadow-sm border border-slate-200">
+                {/* Header */}
+                <div className="text-center mb-8">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-50 mb-4">
+                        <Upload className="w-8 h-8 text-blue-600" />
+                    </div>
+                    <h2 className="text-3xl font-bold text-slate-900 tracking-tight">
+                        Upload Book
+                    </h2>
+                    <p className="text-slate-500 mt-2">
+                        Add a new PDF to your library for reading and analysis
+                    </p>
+                </div>
+
+                {error && <ErrorAlert message={error} />}
+
+                <form onSubmit={handleUpload} className="space-y-8">
+                    <Dropzone
+                        file={file}
+                        pageCount={pageCount}
+                        isDragging={isDragging}
+                        uploading={uploading}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        onFileChange={handleFileChange}
+                    />
+
+                    <ChapterRangeEditor
+                        ranges={chapterRanges}
+                        uploading={uploading}
+                        onAdd={addChapterRange}
+                        onUpdate={updateChapterRange}
+                        onRemove={removeChapterRange}
+                    />
+
+                    {/* Submit */}
+                    <div className="pt-2">
+                        <button
+                            className={`w-full flex items-center justify-center py-3 px-4 rounded-xl text-white font-medium text-base transition-all duration-200 ${getSubmitButtonClass(file, uploading)}`}
+                            type="submit"
+                            disabled={!file || uploading}
+                        >
+                            {uploading ? (
+                                <>
+                                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                                    Processing Document...
+                                </>
+                            ) : (
+                                <>
+                                    <Upload className="w-5 h-5 mr-2" />
+                                    Upload to Library
+                                </>
+                            )}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+export default UploadPDF;
