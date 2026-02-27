@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, ArrowLeft, Menu } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ArrowLeft, Menu, Sparkles, BookOpen } from 'lucide-react';
 import { ROUTES } from '@/lib/constants';
 import type { Chapter } from '@/types';
 
@@ -11,6 +11,8 @@ interface ReaderToolbarProps {
     readonly onGoToPage: (p: number) => void;
     readonly onPrev: () => void;
     readonly onNext: () => void;
+    readonly summaryView: boolean;
+    readonly onToggleSummaryView: () => void;
 }
 
 export function ReaderToolbar({
@@ -21,6 +23,8 @@ export function ReaderToolbar({
     onGoToPage,
     onPrev,
     onNext,
+    summaryView,
+    onToggleSummaryView,
 }: ReaderToolbarProps) {
     return (
         <div className="bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-10">
@@ -42,13 +46,32 @@ export function ReaderToolbar({
                 <div className="h-4 w-px bg-slate-200 hidden sm:block mx-2" />
 
                 {activeChapter ? (
-                    <span className="text-sm font-medium text-slate-700 truncate max-w-[200px] sm:max-w-xs lg:max-w-md">
+                    <span className="text-sm font-medium text-slate-700 truncate max-w-[160px] sm:max-w-xs lg:max-w-md">
                         {activeChapter.title}
                     </span>
                 ) : (
                     <span className="text-sm font-medium text-slate-400 italic">
                         Unmapped section
                     </span>
+                )}
+
+                {/* Summary view toggle — only shown when inside a chapter */}
+                {activeChapter && (
+                    <>
+                        <div className="h-4 w-px bg-slate-200 mx-1" />
+                        <button
+                            onClick={onToggleSummaryView}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${summaryView
+                                    ? 'bg-blue-600 text-white shadow-sm'
+                                    : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200'
+                                }`}
+                        >
+                            {summaryView
+                                ? <><BookOpen size={14} /> Reading</>
+                                : <><Sparkles size={14} /> Summary</>
+                            }
+                        </button>
+                    </>
                 )}
             </div>
 

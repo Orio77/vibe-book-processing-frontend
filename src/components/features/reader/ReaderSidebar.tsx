@@ -1,6 +1,6 @@
 import { X } from 'lucide-react';
 import PDFTools from '../PDFTools';
-import type { Chapter } from '@/types';
+import type { Chapter, ChapterSummary } from '@/types';
 
 interface ReaderSidebarProps {
     readonly pdfInfo: { id: number; title: string } | null;
@@ -9,6 +9,7 @@ interface ReaderSidebarProps {
     readonly sidebarOpen: boolean;
     readonly onClose: () => void;
     readonly onJumpToChapter: (ch: Chapter) => void;
+    readonly onViewSummary: (summaries: ChapterSummary[]) => void;
 }
 
 export function ReaderSidebar({
@@ -18,6 +19,7 @@ export function ReaderSidebar({
     sidebarOpen,
     onClose,
     onJumpToChapter,
+    onViewSummary,
 }: ReaderSidebarProps) {
     return (
         <div
@@ -50,6 +52,7 @@ export function ReaderSidebar({
                                 <PDFTools
                                     pdfId={pdfInfo.id}
                                     chapterId={activeChapter?.id ?? null}
+                                    onViewSummary={onViewSummary}
                                 />
                             </div>
                         )}

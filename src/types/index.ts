@@ -33,6 +33,11 @@ export interface ChapterRangeInput {
     endPage: string;
 }
 
+export interface ChapterSummary {
+    id: number;
+    summaryText: string;
+}
+
 export interface ToastData {
     readonly message: string;
     readonly type: 'success' | 'error';

@@ -10,10 +10,12 @@ import {
 } from 'lucide-react';
 import {
     createChapterSummary,
+    getSummaryByChapterId,
     createBookSummary,
     markKeyIdeas,
     markExamples,
 } from '@/lib/api';
+import type { ChapterSummary } from '@/types';
 import { useToast } from '@/hooks';
 import { Toast } from '@/components/ui';
 import type { LucideIcon } from 'lucide-react';
@@ -21,11 +23,11 @@ import type { LucideIcon } from 'lucide-react';
 interface PDFToolsProps {
     pdfId: number;
     chapterId: number | null;
+    onViewSummary: (summaries: ChapterSummary[]) => void;
 }
 
-const PDFTools: React.FC<PDFToolsProps> = ({ pdfId, chapterId }) => {
+const PDFTools: React.FC<PDFToolsProps> = ({ pdfId, chapterId, onViewSummary }) => {
     const [loadingAction, setLoadingAction] = useState<string | null>(null);
-    const [bookContext, setBookContext] = useState(false);
     const { toast, showToast, dismissToast } = useToast();
 
     const runAction = useCallback(
@@ -44,13 +46,20 @@ const PDFTools: React.FC<PDFToolsProps> = ({ pdfId, chapterId }) => {
         [showToast],
     );
 
-    const handleChapterSummary = () => {
+    const handleChapterSummary = async () => {
         if (!chapterId) return;
-        runAction(
-            'chapter-summary',
-            () => createChapterSummary(pdfId, chapterId, bookContext),
-            `Chapter summary created! (${bookContext ? 'With Book Context' : 'Chapter only'})`,
-        );
+        setLoadingAction('chapter-summary');
+        try {
+            await createChapterSummary(chapterId);
+            const allSummaries = await getSummaryByChapterId(chapterId);
+            onViewSummary(allSummaries);
+            showToast('Chapter summary created!', 'success');
+        } catch (err) {
+            console.error(err);
+            showToast('Error: chapter summary failed.', 'error');
+        } finally {
+            setLoadingAction(null);
+        }
     };
 
     const handleBookSummary = () =>
@@ -88,27 +97,11 @@ const PDFTools: React.FC<PDFToolsProps> = ({ pdfId, chapterId }) => {
             </div>
 
             <div className="p-4 space-y-4">
-                {/* Context Toggle */}
-                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
-                    <span className="text-sm font-medium text-slate-700">
-                        Include Book Context
-                    </span>
-                    <label className="relative inline-flex items-center cursor-pointer" aria-label="Include book context toggle">
-                        <input
-                            type="checkbox"
-                            className="sr-only peer"
-                            checked={bookContext}
-                            onChange={(e) => setBookContext(e.target.checked)}
-                        />
-                        <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
-                    </label>
-                </div>
-
                 <div className="space-y-2">
                     <ToolButton
                         id="chapter-summary"
                         icon={BookOpen}
-                        label="Chapter Summary"
+                        label="Generate Chapter Summary"
                         onClick={handleChapterSummary}
                         disabled={!chapterId}
                         loadingAction={loadingAction}
@@ -168,6 +161,7 @@ const PDFTools: React.FC<PDFToolsProps> = ({ pdfId, chapterId }) => {
             {toast && (
                 <Toast message={toast.message} type={toast.type} onClose={dismissToast} />
             )}
+
         </div>
     );
 };

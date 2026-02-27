@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { PDF, Chapter, Sentence, ChapterPageRange } from '@/types';
+import type { PDF, Chapter, Sentence, ChapterPageRange, ChapterSummary } from '@/types';
 
 /**
  * Configured Axios instance.
@@ -89,15 +89,28 @@ export async function fetchPageSentences(
 const PROCESS_URL = 'process';
 
 export async function createChapterSummary(
-    pdfId: number,
     chapterId: number,
-    bookContext: boolean,
-): Promise<void> {
-    await apiClient.post(
+): Promise<number> {
+    const res = await apiClient.post<number>(
         `${PROCESS_URL}/chapter/summary`,
         null,
-        { params: { pdfId, chapterId, bookContext } },
+        { params: { chapterId } },
     );
+    return res.data;
+}
+
+export async function getChapterSummary(id: number): Promise<string> {
+    const res = await apiClient.get<string>(`${PROCESS_URL}/chapter/summary/${id}`);
+    return res.data;
+}
+
+export async function getSummaryByChapterId(chapterId: number): Promise<ChapterSummary[]> {
+    const res = await apiClient.get<ChapterSummary[]>(`${PROCESS_URL}/chapter/${chapterId}/summary`);
+    return res.data;
+}
+
+export async function deleteChapterSummary(id: number): Promise<void> {
+    await apiClient.delete(`${PROCESS_URL}/chapter/summary/${id}`);
 }
 
 export async function createBookSummary(pdfId: number): Promise<void> {
