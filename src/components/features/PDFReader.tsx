@@ -1,12 +1,13 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { usePdfReader } from '@/hooks';
 import { LoadingSpinner } from '@/components/ui';
 import { ReaderSidebar, ReaderToolbar, PageSkeleton, BlankPage } from './reader';
 import { SummaryViewer } from './SummaryViewer';
-import { getSummaryByChapterId, deleteChapterSummary } from '@/lib/api';
-import type { ChapterSummary } from '@/types';
+import { getSummaryByChapterId, deleteChapterSummary, fetchIdeasByChapterId } from '@/lib/api';
+import type { ChapterSummary, IdeaWithSentences } from '@/types';
+import { IdeaArgumentsModal } from './IdeaArgumentsModal';
 
 const PDFReader = () => {
     const { id } = useParams<{ id: string }>();
@@ -30,6 +31,41 @@ const PDFReader = () => {
     const [summaryView, setSummaryView] = useState(false);
     const [summaries, setSummaries] = useState<ChapterSummary[]>([]);
     const [loadingSummary, setLoadingSummary] = useState(false);
+
+    // Ideas state
+    const [showIdeas, setShowIdeas] = useState(false);
+    const [ideas, setIdeas] = useState<IdeaWithSentences[]>([]);
+    const [loadingIdeas, setLoadingIdeas] = useState(false);
+    const [selectedIdeas, setSelectedIdeas] = useState<IdeaWithSentences[] | null>(null);
+
+    // Fetch ideas when showIdeas is enabled
+    useEffect(() => {
+        if (showIdeas && activeChapter) {
+            setLoadingIdeas(true);
+            fetchIdeasByChapterId(activeChapter.id)
+                .then(data => setIdeas(data))
+                .catch(() => { })
+                .finally(() => setLoadingIdeas(false));
+        } else {
+            setIdeas([]);
+        }
+    }, [showIdeas, activeChapter]);
+
+    const sentenceIdeasMap = useMemo(() => {
+        const map = new Map<number, IdeaWithSentences[]>();
+        ideas.forEach(ideaWithSentences => {
+            ideaWithSentences.sentences.forEach(s => {
+                const list = map.get(s.sentenceId) || [];
+                list.push(ideaWithSentences);
+                map.set(s.sentenceId, list);
+            });
+        });
+        return map;
+    }, [ideas]);
+
+    const handleIdeaClick = (sentenceIdeas: IdeaWithSentences[]) => {
+        setSelectedIdeas(sentenceIdeas);
+    };
 
     // Called by PDFTools after generating, or when the toolbar button is clicked
     const openSummaryView = useCallback((incoming?: ChapterSummary[]) => {
@@ -55,7 +91,7 @@ const PDFReader = () => {
     }, [summaryView, activeChapter]);
 
     // Close summary when chapter changes
-    const handleJumpToChapter = useCallback((ch: Parameters<typeof goToPage>[0] extends number ? never : Parameters<typeof goToPage>[0] & { startPage: number }) => {
+    const handleJumpToChapter = useCallback((ch: { startPage: number }) => {
         goToPage(ch.startPage);
         setSummaryView(false);
         setSidebarOpen(false);
@@ -89,15 +125,40 @@ const PDFReader = () => {
                         </h1>
                     </div>
                 )}
-                <div className="text-lg">
-                    {sentences.map((s) => (
-                        <span
-                            key={s.id}
-                            className="inline hover:bg-blue-50 transition-colors duration-200 rounded px-0.5 cursor-text"
-                        >
-                            {s.content}{' '}
-                        </span>
-                    ))}
+                <div className="text-lg relative">
+                    {loadingIdeas && (
+                        <div className="absolute top-0 right-0 -mt-6 -mr-4 bg-white/80 p-2 rounded-lg shadow-sm backdrop-blur-sm shadow-blue-100 border border-blue-100 z-10 flex items-center text-sm text-blue-600">
+                            <LoadingSpinner className="w-4 h-4 mr-2" />
+                            Loading ideas...
+                        </div>
+                    )}
+                    {sentences.map((s) => {
+                        const ideasForSentence = sentenceIdeasMap.get(s.id);
+                        const isIdea = showIdeas && ideasForSentence && ideasForSentence.length > 0;
+
+                        if (isIdea) {
+                            return (
+                                <button
+                                    key={s.id}
+                                    type="button"
+                                    onClick={() => handleIdeaClick(ideasForSentence)}
+                                    className="inline text-left font-inherit text-inherit leading-inherit m-0 p-0 border-0 bg-blue-200 hover:bg-blue-300 rounded px-0.5 transition-colors duration-200 cursor-pointer"
+                                    style={{ font: 'inherit', letterSpacing: 'inherit', wordSpacing: 'inherit' }}
+                                >
+                                    {s.content}{' '}
+                                </button>
+                            );
+                        }
+
+                        return (
+                            <span
+                                key={s.id}
+                                className="inline transition-colors duration-200 rounded px-0.5 hover:bg-blue-50 cursor-text"
+                            >
+                                {s.content}{' '}
+                            </span>
+                        );
+                    })}
                 </div>
             </div>
         );
@@ -149,6 +210,8 @@ const PDFReader = () => {
                         onNext={nextPage}
                         summaryView={summaryView}
                         onToggleSummaryView={() => openSummaryView()}
+                        showIdeas={showIdeas}
+                        onToggleIdeas={() => setShowIdeas(prev => !prev)}
                     />
 
                     {summaryView ? (
@@ -197,6 +260,11 @@ const PDFReader = () => {
                     )}
                 </div>
 
+                <IdeaArgumentsModal
+                    isOpen={selectedIdeas !== null}
+                    onClose={() => setSelectedIdeas(null)}
+                    ideas={selectedIdeas || []}
+                />
             </div>{/* end Reader body */}
         </div>
     );

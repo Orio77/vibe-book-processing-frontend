@@ -42,3 +42,23 @@ export interface ToastData {
     readonly message: string;
     readonly type: 'success' | 'error';
 }
+
+export interface IdeaDTO {
+    ideaId: number;
+    ideaTitle: string;
+}
+
+export interface SentenceDTO {
+    sentenceId: number;
+    sentenceContent: string;
+}
+
+export interface IdeaWithSentences {
+    idea: IdeaDTO;
+    sentences: SentenceDTO[];
+}
+
+export interface IdeaArgumentDTO {
+    id: number;
+    text: string;
+}

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { PDF, Chapter, Sentence, ChapterPageRange, ChapterSummary } from '@/types';
+import type { PDF, Chapter, Sentence, ChapterPageRange, ChapterSummary, IdeaWithSentences, IdeaArgumentDTO } from '@/types';
 
 /**
  * Configured Axios instance.
@@ -120,12 +120,21 @@ export async function createBookSummary(pdfId: number): Promise<void> {
 }
 
 export async function markKeyIdeas(
-    pdfId: number,
     chapterId: number,
 ): Promise<void> {
-    await apiClient.post(`${PROCESS_URL}/chapter/ideas`, null, {
-        params: { pdfId, chapterId },
+    await apiClient.post(`${PROCESS_URL}/idea/extract`, null, {
+        params: { chapterId },
     });
+}
+
+export async function fetchIdeasByChapterId(chapterId: number): Promise<IdeaWithSentences[]> {
+    const res = await apiClient.get<IdeaWithSentences[]>(`${PROCESS_URL}/idea/get/all/${chapterId}`);
+    return emptyOn204(res) as IdeaWithSentences[];
+}
+
+export async function fetchIdeaArguments(ideaId: number): Promise<IdeaArgumentDTO[]> {
+    const res = await apiClient.get<IdeaArgumentDTO[]>(`${PROCESS_URL}/idea/argument/get/${ideaId}`);
+    return emptyOn204(res) as IdeaArgumentDTO[];
 }
 
 export async function markExamples(

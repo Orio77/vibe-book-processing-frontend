@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, ArrowLeft, Menu, Sparkles, BookOpen } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ArrowLeft, Menu, Sparkles, BookOpen, Lightbulb } from 'lucide-react';
 import { ROUTES } from '@/lib/constants';
 import type { Chapter } from '@/types';
 
@@ -13,6 +13,8 @@ interface ReaderToolbarProps {
     readonly onNext: () => void;
     readonly summaryView: boolean;
     readonly onToggleSummaryView: () => void;
+    readonly showIdeas: boolean;
+    readonly onToggleIdeas: () => void;
 }
 
 export function ReaderToolbar({
@@ -25,6 +27,8 @@ export function ReaderToolbar({
     onNext,
     summaryView,
     onToggleSummaryView,
+    showIdeas,
+    onToggleIdeas,
 }: ReaderToolbarProps) {
     return (
         <div className="bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-10">
@@ -70,6 +74,17 @@ export function ReaderToolbar({
                                 ? <><BookOpen size={14} /> Reading</>
                                 : <><Sparkles size={14} /> Summary</>
                             }
+                        </button>
+
+                        <div className="h-4 w-px bg-slate-200 mx-1" />
+                        <button
+                            onClick={onToggleIdeas}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${showIdeas
+                                    ? 'bg-amber-500 text-white shadow-sm'
+                                    : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200'
+                                }`}
+                        >
+                            <Lightbulb size={14} /> Ideas
                         </button>
                     </>
                 )}

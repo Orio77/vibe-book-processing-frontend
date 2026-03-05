@@ -73,7 +73,7 @@ const PDFTools: React.FC<PDFToolsProps> = ({ pdfId, chapterId, onViewSummary }) 
         if (!chapterId) return;
         runAction(
             'mark-ideas',
-            () => markKeyIdeas(pdfId, chapterId),
+            () => markKeyIdeas(chapterId),
             'Key ideas have been marked!',
         );
     };
