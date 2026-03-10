@@ -52,6 +52,7 @@ export function ReaderSidebar({
                                 <PDFTools
                                     pdfId={pdfInfo.id}
                                     chapterId={activeChapter?.id ?? null}
+                                    chapterCount={chapters.length}
                                     onViewSummary={onViewSummary}
                                 />
                             </div>

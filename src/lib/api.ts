@@ -156,4 +156,24 @@ export async function processChapterContext(
     });
 }
 
+// ---------------------------------------------------------------------------
+// Chat & Explanations
+// ---------------------------------------------------------------------------
+
+export interface PDFChatRequest {
+    chapterId: number;
+    query?: string;
+    context: { sentenceId: number; sentenceContent: string }[];
+}
+
+export async function fetchChat(request: PDFChatRequest): Promise<string> {
+    const res = await apiClient.post<string>('/chat', request);
+    return res.data;
+}
+
+export async function fetchExplanation(request: PDFChatRequest): Promise<string> {
+    const res = await apiClient.post<string>('/chat/explain', request);
+    return res.data;
+}
+
 export default apiClient;

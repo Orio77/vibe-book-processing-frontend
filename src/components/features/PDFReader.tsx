@@ -1,12 +1,12 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { usePdfReader } from '@/hooks';
-import { LoadingSpinner } from '@/components/ui';
+import { LoadingSpinner, Modal } from '@/components/ui';
 import { ReaderSidebar, ReaderToolbar, PageSkeleton, BlankPage } from './reader';
 import { SummaryViewer } from './SummaryViewer';
-import { getSummaryByChapterId, deleteChapterSummary, fetchIdeasByChapterId } from '@/lib/api';
-import type { ChapterSummary, IdeaWithSentences } from '@/types';
+import { getSummaryByChapterId, deleteChapterSummary, fetchIdeasByChapterId, fetchChat, fetchExplanation } from '@/lib/api';
+import type { ChapterSummary, IdeaWithSentences, Sentence } from '@/types';
 import { IdeaArgumentsModal } from './IdeaArgumentsModal';
 
 const PDFReader = () => {
@@ -37,6 +37,27 @@ const PDFReader = () => {
     const [ideas, setIdeas] = useState<IdeaWithSentences[]>([]);
     const [loadingIdeas, setLoadingIdeas] = useState(false);
     const [selectedIdeas, setSelectedIdeas] = useState<IdeaWithSentences[] | null>(null);
+
+    // Sentence marking mode state
+    const [isMarkingMode, setIsMarkingMode] = useState(false);
+    const [markedSentences, setMarkedSentences] = useState<Sentence[]>([]);
+    const [showQueryBox, setShowQueryBox] = useState(false);
+    const [queryText, setQueryText] = useState('');
+
+    // In-memory requests storage
+    const [requests, setRequests] = useState<Array<{
+        id: string;
+        type: 'explain' | 'query';
+        query?: string;
+        sentences: Sentence[];
+        timestamp: Date;
+        status: 'pending' | 'success' | 'error';
+        response?: string;
+    }>>([]);
+
+    const [selectedRequest, setSelectedRequest] = useState<typeof requests[0] | null>(null);
+
+    const holdTimeoutRef = useRef<number | null>(null);
 
     // Fetch ideas when showIdeas is enabled
     useEffect(() => {
@@ -112,6 +133,118 @@ const PDFReader = () => {
 
     const progressPercentage = (page / totalPages) * 100;
 
+    const handlePointerDown = (_e: React.PointerEvent, s: Sentence) => {
+        if (!isMarkingMode) {
+            holdTimeoutRef.current = window.setTimeout(() => {
+                setIsMarkingMode(true);
+                setMarkedSentences([s]);
+                window.navigator?.vibrate?.(50);
+            }, 500);
+        }
+    };
+
+    const handlePointerUp = () => {
+        if (holdTimeoutRef.current !== null) {
+            window.clearTimeout(holdTimeoutRef.current);
+            holdTimeoutRef.current = null;
+        }
+    };
+
+    const handlePointerLeave = () => {
+        if (holdTimeoutRef.current !== null) {
+            window.clearTimeout(holdTimeoutRef.current);
+            holdTimeoutRef.current = null;
+        }
+    };
+
+    const handleSentenceClick = (_e: React.MouseEvent, s: Sentence) => {
+        if (isMarkingMode) {
+            setMarkedSentences(prev => {
+                const exists = prev.some(m => m.id === s.id);
+                if (exists) {
+                    const newMarks = prev.filter(m => m.id !== s.id);
+                    if (newMarks.length === 0) {
+                        setIsMarkingMode(false);
+                        setShowQueryBox(false);
+                    }
+                    return newMarks;
+                } else {
+                    return [...prev, s];
+                }
+            });
+        }
+    };
+
+    const handleRequestExplanation = async () => {
+        if (!activeChapter) return;
+
+        const reqId = crypto.randomUUID();
+        const requestPayload = {
+            chapterId: activeChapter.id,
+            context: markedSentences.map(s => ({ sentenceId: s.id, sentenceContent: s.content }))
+        };
+
+        const newRequest = {
+            id: reqId,
+            type: 'explain' as const,
+            sentences: markedSentences,
+            timestamp: new Date(),
+            status: 'pending' as const,
+        };
+
+        setRequests(prev => [...prev, newRequest]);
+        setSelectedRequest(newRequest);
+        exitMarkingMode();
+
+        try {
+            const response = await fetchExplanation(requestPayload);
+            setRequests(prev => prev.map(r => r.id === reqId ? { ...r, status: 'success', response } : r));
+            setSelectedRequest(prev => prev?.id === reqId ? { ...prev, status: 'success', response } : prev);
+        } catch (error) {
+            setRequests(prev => prev.map(r => r.id === reqId ? { ...r, status: 'error', response: 'Failed to fetch explanation.' } : r));
+            setSelectedRequest(prev => prev?.id === reqId ? { ...prev, status: 'error', response: 'Failed to fetch explanation.' } : prev);
+        }
+    };
+
+    const handleSendQuery = async () => {
+        if (!queryText.trim() || !activeChapter) return;
+
+        const q = queryText;
+        const reqId = crypto.randomUUID();
+        const requestPayload = {
+            chapterId: activeChapter.id,
+            query: q,
+            context: markedSentences.map(s => ({ sentenceId: s.id, sentenceContent: s.content }))
+        };
+
+        const newRequest = {
+            id: reqId,
+            type: 'query' as const,
+            query: q,
+            sentences: markedSentences,
+            timestamp: new Date(),
+            status: 'pending' as const,
+        };
+
+        setRequests(prev => [...prev, newRequest]);
+        setSelectedRequest(newRequest);
+        exitMarkingMode();
+
+        try {
+            const response = await fetchChat(requestPayload);
+            setRequests(prev => prev.map(r => r.id === reqId ? { ...r, status: 'success', response } : r));
+            setSelectedRequest(prev => prev?.id === reqId ? { ...prev, status: 'success', response } : prev);
+        } catch (error) {
+            setRequests(prev => prev.map(r => r.id === reqId ? { ...r, status: 'error', response: 'Failed to fetch response.' } : r));
+            setSelectedRequest(prev => prev?.id === reqId ? { ...prev, status: 'error', response: 'Failed to fetch response.' } : prev);
+        }
+    }; const exitMarkingMode = () => {
+        setIsMarkingMode(false);
+        setMarkedSentences([]);
+        setShowQueryBox(false);
+        setQueryText('');
+    };
+
     const renderBookContent = () => {
         if (pageLoading) return <PageSkeleton page={page} />;
         if (sentences.length === 0) return <BlankPage page={page} />;
@@ -135,8 +268,9 @@ const PDFReader = () => {
                     {sentences.map((s) => {
                         const ideasForSentence = sentenceIdeasMap.get(s.id);
                         const isIdea = showIdeas && ideasForSentence && ideasForSentence.length > 0;
+                        const isMarked = markedSentences.some(m => m.id === s.id);
 
-                        if (isIdea) {
+                        if (isIdea && !isMarkingMode) {
                             return (
                                 <button
                                     key={s.id}
@@ -153,7 +287,16 @@ const PDFReader = () => {
                         return (
                             <span
                                 key={s.id}
-                                className="inline transition-colors duration-200 rounded px-0.5 hover:bg-blue-50 cursor-text"
+                                className={`inline transition-colors duration-200 rounded px-0.5 ${isMarked
+                                    ? 'bg-yellow-200 cursor-pointer'
+                                    : isMarkingMode
+                                        ? 'cursor-pointer hover:bg-slate-100'
+                                        : 'hover:bg-blue-50 cursor-text'
+                                    }`}
+                                onPointerDown={(e) => handlePointerDown(e, s)}
+                                onPointerUp={handlePointerUp}
+                                onPointerLeave={handlePointerLeave}
+                                onClick={(e) => handleSentenceClick(e, s)}
                             >
                                 {s.content}{' '}
                             </span>
@@ -260,11 +403,98 @@ const PDFReader = () => {
                     )}
                 </div>
 
+                {/* Floating Marking Toolbar */}
+                {isMarkingMode && markedSentences.length > 0 && (
+                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white shadow-xl border border-slate-200 rounded-xl p-4 z-40 flex flex-col items-center animate-in slide-in-from-bottom flex-wrap min-w-[300px]">
+                        <div className="flex items-center space-x-3 mb-2">
+                            <span className="text-sm font-medium text-slate-600 mr-2">
+                                {markedSentences.length} sentence{markedSentences.length !== 1 && 's'} selected
+                            </span>
+                            <button
+                                onClick={handleRequestExplanation}
+                                className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 font-medium text-sm transition-colors"
+                            >
+                                Request Explanation
+                            </button>
+                            <button
+                                onClick={() => setShowQueryBox(true)}
+                                className="px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 font-medium text-sm transition-colors"
+                            >
+                                Send Query
+                            </button>
+                            <button
+                                onClick={exitMarkingMode}
+                                className="p-2 text-slate-400 hover:text-slate-600 rounded-lg transition-colors ml-2"
+                                aria-label="Cancel"
+                            >
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+                            </button>
+                        </div>
+
+                        {showQueryBox && (
+                            <div className="w-full mt-3 flex items-start space-x-2 animate-in fade-in">
+                                <textarea
+                                    value={queryText}
+                                    onChange={(e) => setQueryText(e.target.value)}
+                                    placeholder="Ask a question about the selected sentences..."
+                                    className="flex-1 min-h-[4rem] max-h-[8rem] resize-y p-3 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent custom-scrollbar"
+                                    autoFocus
+                                />
+                                <button
+                                    onClick={handleSendQuery}
+                                    disabled={!queryText.trim()}
+                                    className="p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:hover:bg-blue-600 transition-colors mt-auto"
+                                    aria-label="Send"
+                                >
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" /></svg>
+                                </button>
+                            </div>
+                        )}
+                        {/* Hidden debug log for requests */}
+                        <div className="hidden" aria-hidden="true" data-requests-count={requests.length}></div>
+                    </div>
+                )}
+
                 <IdeaArgumentsModal
                     isOpen={selectedIdeas !== null}
                     onClose={() => setSelectedIdeas(null)}
                     ideas={selectedIdeas || []}
                 />
+
+                {/* Chat / Explanation Modal */}
+                <Modal
+                    isOpen={selectedRequest !== null}
+                    onClose={() => setSelectedRequest(null)}
+                    title={selectedRequest?.type === 'explain' ? 'Explanation' : 'Chat Response'}
+                >
+                    <div className="space-y-4">
+                        <div className="bg-slate-50 p-4 rounded-lg text-sm text-slate-600">
+                            <strong>Reference context:</strong>
+                            <ul className="list-disc pl-5 mt-2 space-y-1">
+                                {selectedRequest?.sentences.map(s => (
+                                    <li key={s.id}>{s.content}</li>
+                                ))}
+                            </ul>
+                        </div>
+                        {selectedRequest?.query && (
+                            <div className="font-medium text-slate-800">
+                                <strong>Q:</strong> {selectedRequest.query}
+                            </div>
+                        )}
+                        <div className="mt-4 text-slate-800">
+                            {selectedRequest?.status === 'pending' ? (
+                                <div className="flex items-center space-x-2 text-blue-600">
+                                    <LoadingSpinner size="sm" />
+                                    <span>Waiting for response from AI...</span>
+                                </div>
+                            ) : selectedRequest?.status === 'error' ? (
+                                <span className="text-red-500">{selectedRequest.response}</span>
+                            ) : (
+                                <div className="whitespace-pre-wrap">{selectedRequest?.response}</div>
+                            )}
+                        </div>
+                    </div>
+                </Modal>
             </div>{/* end Reader body */}
         </div>
     );

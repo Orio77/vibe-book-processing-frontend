@@ -23,10 +23,11 @@ import type { LucideIcon } from 'lucide-react';
 interface PDFToolsProps {
     pdfId: number;
     chapterId: number | null;
+    chapterCount: number;
     onViewSummary: (summaries: ChapterSummary[]) => void;
 }
 
-const PDFTools: React.FC<PDFToolsProps> = ({ pdfId, chapterId, onViewSummary }) => {
+const PDFTools: React.FC<PDFToolsProps> = ({ pdfId, chapterId, chapterCount, onViewSummary }) => {
     const [loadingAction, setLoadingAction] = useState<string | null>(null);
     const { toast, showToast, dismissToast } = useToast();
 
@@ -110,17 +111,19 @@ const PDFTools: React.FC<PDFToolsProps> = ({ pdfId, chapterId, onViewSummary }) 
                         hoverClass="hover:bg-blue-50/30"
                     />
 
-                    <ToolButton
-                        id="book-summary"
-                        icon={Layers}
-                        label="Book Summary"
-                        onClick={handleBookSummary}
-                        disabled={false}
-                        loadingAction={loadingAction}
-                        colorClass="purple"
-                        bgClass="bg-purple-50 text-purple-600 group-hover:bg-purple-100"
-                        hoverClass="hover:bg-purple-50/30"
-                    />
+                    {chapterCount > 1 && (
+                        <ToolButton
+                            id="book-summary"
+                            icon={Layers}
+                            label="Book Summary"
+                            onClick={handleBookSummary}
+                            disabled={false}
+                            loadingAction={loadingAction}
+                            colorClass="purple"
+                            bgClass="bg-purple-50 text-purple-600 group-hover:bg-purple-100"
+                            hoverClass="hover:bg-purple-50/30"
+                        />
+                    )}
 
                     <ToolButton
                         id="mark-ideas"
