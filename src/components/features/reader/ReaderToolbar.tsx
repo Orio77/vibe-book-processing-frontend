@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, ArrowLeft, Menu, Sparkles, BookOpen, Lightbulb } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ArrowLeft, Menu, Sparkles, BookOpen, Lightbulb, MessageSquare } from 'lucide-react';
 import { ROUTES } from '@/lib/constants';
 import type { Chapter } from '@/types';
 
@@ -15,6 +15,8 @@ interface ReaderToolbarProps {
     readonly onToggleSummaryView: () => void;
     readonly showIdeas: boolean;
     readonly onToggleIdeas: () => void;
+    readonly showChat: boolean;
+    readonly onToggleChat: () => void;
 }
 
 export function ReaderToolbar({
@@ -29,6 +31,8 @@ export function ReaderToolbar({
     onToggleSummaryView,
     showIdeas,
     onToggleIdeas,
+    showChat,
+    onToggleChat,
 }: ReaderToolbarProps) {
     return (
         <div className="bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-10">
@@ -66,8 +70,8 @@ export function ReaderToolbar({
                         <button
                             onClick={onToggleSummaryView}
                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${summaryView
-                                    ? 'bg-blue-600 text-white shadow-sm'
-                                    : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200'
+                                ? 'bg-blue-600 text-white shadow-sm'
+                                : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200'
                                 }`}
                         >
                             {summaryView
@@ -80,11 +84,22 @@ export function ReaderToolbar({
                         <button
                             onClick={onToggleIdeas}
                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${showIdeas
-                                    ? 'bg-amber-500 text-white shadow-sm'
-                                    : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200'
+                                ? 'bg-amber-500 text-white shadow-sm'
+                                : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200'
                                 }`}
                         >
                             <Lightbulb size={14} /> Ideas
+                        </button>
+
+                        <div className="h-4 w-px bg-slate-200 mx-1" />
+                        <button
+                            onClick={onToggleChat}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${showChat
+                                    ? 'bg-teal-600 text-white shadow-sm'
+                                    : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-teal-50 hover:text-teal-700 hover:border-teal-200'
+                                }`}
+                        >
+                            <MessageSquare size={14} /> Chat
                         </button>
                     </>
                 )}

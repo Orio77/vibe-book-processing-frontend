@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { PDF, Chapter, Sentence, ChapterPageRange, ChapterSummary, IdeaWithSentences, IdeaArgumentDTO } from '@/types';
+import type { PDF, Chapter, Sentence, ChapterPageRange, ChapterSummary, IdeaWithSentences, IdeaArgumentDTO, PDFChatResponse } from '@/types';
 
 /**
  * Configured Axios instance.
@@ -166,6 +166,49 @@ export interface PDFChatRequest {
     context: { sentenceId: number; sentenceContent: string }[];
 }
 
+interface RawPDFChatResponse {
+    chatResponseId?: number;
+    id?: number;
+    responseId?: number;
+    chat_response_id?: number;
+    chatResponseID?: number;
+    query: string | null;
+    chatResponse: string;
+    contextSentencesIds: number[];
+}
+
+function coerceNumber(value: unknown): number | null {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+        return value;
+    }
+    if (typeof value === 'string') {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+}
+
+function normalizeChatResponse(raw: RawPDFChatResponse): PDFChatResponse {
+    const resolvedId = coerceNumber(
+        raw.chatResponseId
+        ?? raw.id
+        ?? raw.responseId
+        ?? raw.chat_response_id
+        ?? raw.chatResponseID,
+    );
+
+    if (resolvedId === null) {
+        throw new TypeError('Chat response id is missing in backend payload');
+    }
+
+    return {
+        chatResponseId: resolvedId,
+        query: raw.query,
+        chatResponse: raw.chatResponse,
+        contextSentencesIds: raw.contextSentencesIds,
+    };
+}
+
 export async function fetchChat(request: PDFChatRequest): Promise<string> {
     const res = await apiClient.post<string>('/chat', request);
     return res.data;
@@ -174,6 +217,23 @@ export async function fetchChat(request: PDFChatRequest): Promise<string> {
 export async function fetchExplanation(request: PDFChatRequest): Promise<string> {
     const res = await apiClient.post<string>('/chat/explain', request);
     return res.data;
+}
+
+export async function fetchChatResponsesForChapter(chapterId: number): Promise<PDFChatResponse[]> {
+    const res = await apiClient.get<RawPDFChatResponse[]>(`/chat/response/get/all/${chapterId}`);
+    const data = emptyOn204(res) as RawPDFChatResponse[];
+    return data.map(normalizeChatResponse);
+}
+
+export async function updateChatResponse(chatResponseId: number, body: string): Promise<PDFChatResponse> {
+    const res = await apiClient.put<RawPDFChatResponse>(`/chat/response/edit/${chatResponseId}`, body, {
+        headers: { 'Content-Type': 'text/plain' },
+    });
+    return normalizeChatResponse(res.data);
+}
+
+export async function deleteChatResponse(chatResponseId: number): Promise<void> {
+    await apiClient.delete(`/chat/response/delete/${chatResponseId}`);
 }
 
 export default apiClient;

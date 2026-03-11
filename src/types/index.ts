@@ -62,3 +62,10 @@ export interface IdeaArgumentDTO {
     id: number;
     text: string;
 }
+
+export interface PDFChatResponse {
+    chatResponseId: number;
+    query: string | null;
+    chatResponse: string;
+    contextSentencesIds: number[];
+}

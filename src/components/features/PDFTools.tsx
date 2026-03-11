@@ -137,7 +137,7 @@ const PDFTools: React.FC<PDFToolsProps> = ({ pdfId, chapterId, chapterCount, onV
                         hoverClass="hover:bg-amber-50/30"
                     />
 
-                    <ToolButton
+                    {/* <ToolButton
                         id="mark-examples"
                         icon={Target}
                         label="Find Examples"
@@ -147,7 +147,7 @@ const PDFTools: React.FC<PDFToolsProps> = ({ pdfId, chapterId, chapterCount, onV
                         colorClass="emerald"
                         bgClass="bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100"
                         hoverClass="hover:bg-emerald-50/30"
-                    />
+                    /> */}
                 </div>
 
                 {!chapterId && (
