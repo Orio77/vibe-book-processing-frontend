@@ -1,14 +1,13 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react';
-import { usePdfReader } from '@/hooks';
+import { usePdfReader, useReaderIdeas, useReaderChat, useReaderSummary, useSentenceMarking, useReaderRequests } from '@/hooks';
 import { LoadingSpinner, Modal } from '@/components/ui';
 import { ReaderSidebar, ReaderToolbar, PageSkeleton, BlankPage } from './reader';
 import { SummaryViewer } from './SummaryViewer';
-import { getSummaryByChapterId, deleteChapterSummary, fetchIdeasByChapterId, fetchChat, fetchExplanation, fetchChatResponsesForChapter, updateChatResponse, deleteChatResponse } from '@/lib/api';
-import type { ChapterSummary, IdeaWithSentences, Sentence, PDFChatResponse } from '@/types';
 import { IdeaArgumentsModal } from './IdeaArgumentsModal';
 import { ChatResponseModal } from './ChatResponseModal';
+import type { Sentence, PDFChatResponse } from '@/types';
 
 const PDFReader = () => {
     const { id } = useParams<{ id: string }>();
@@ -28,407 +27,77 @@ const PDFReader = () => {
 
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
-    // Summary view state — lives here so it survives sidebar interactions
-    const [summaryView, setSummaryView] = useState(false);
-    const [summaries, setSummaries] = useState<ChapterSummary[]>([]);
-    const [loadingSummary, setLoadingSummary] = useState(false);
+    // ── Extracted domain hooks ──
+    const {
+        showIdeas,
+        loadingIdeas,
+        selectedIdeas,
+        sentenceIdeasMap,
+        toggleIdeas,
+        handleIdeaClick,
+        closeIdeaModal,
+    } = useReaderIdeas(activeChapter);
 
-    // Ideas state
-    const [showIdeas, setShowIdeas] = useState(false);
-    const [ideas, setIdeas] = useState<IdeaWithSentences[]>([]);
-    const [loadingIdeas, setLoadingIdeas] = useState(false);
-    const [selectedIdeas, setSelectedIdeas] = useState<IdeaWithSentences[] | null>(null);
+    const {
+        showChat,
+        loadingChat,
+        highlightedSentenceIds,
+        selectedChatResponse,
+        highlightedChatResponseIdx,
+        sentenceChatIconMap,
+        toggleChat,
+        handleChatIconClick,
+        handleDeleteChatResponse,
+        handleSaveChatResponse,
+        closeChatModal,
+    } = useReaderChat(activeChapter, sentences);
 
-    // Chat overlay state
-    const [showChat, setShowChat] = useState(false);
-    const [chatResponses, setChatResponses] = useState<PDFChatResponse[]>([]);
-    const [loadingChat, setLoadingChat] = useState(false);
-    const [highlightedSentenceIds, setHighlightedSentenceIds] = useState<Set<number>>(new Set());
-    const [selectedChatResponse, setSelectedChatResponse] = useState<PDFChatResponse | null>(null);
-    // tracks which sentence's chat icon was clicked first (for 2-click behaviour)
-    const [highlightedChatResponseIdx, setHighlightedChatResponseIdx] = useState<string | null>(null);
+    const {
+        summaryView,
+        summaries,
+        loadingSummary,
+        openSummaryView,
+        closeSummary,
+        handleDeleteSummary,
+    } = useReaderSummary(activeChapter);
 
-    // Sentence marking mode state
-    const [isMarkingMode, setIsMarkingMode] = useState(false);
-    const [markedSentences, setMarkedSentences] = useState<Sentence[]>([]);
-    const [showQueryBox, setShowQueryBox] = useState(false);
-    const [queryText, setQueryText] = useState('');
+    const {
+        isMarkingMode,
+        markedSentences,
+        showQueryBox,
+        queryText,
+        setShowQueryBox,
+        setQueryText,
+        exitMarkingMode,
+        handlePointerDown,
+        handlePointerUp,
+        handlePointerCancel,
+        handlePointerMove,
+        handlePointerEnter,
+        handleSentenceKeyDown,
+    } = useSentenceMarking(sentences);
 
-    // In-memory requests storage
-    const [requests, setRequests] = useState<Array<{
-        id: string;
-        type: 'explain' | 'query';
-        query?: string;
-        sentences: Sentence[];
-        timestamp: Date;
-        status: 'pending' | 'success' | 'error';
-        response?: string;
-    }>>([]);
+    const {
+        requests,
+        selectedRequest,
+        handleRequestExplanation,
+        handleSendQuery,
+        closeRequestModal,
+    } = useReaderRequests(activeChapter, markedSentences, exitMarkingMode);
 
-    const [selectedRequest, setSelectedRequest] = useState<typeof requests[0] | null>(null);
+    // ── Derived handlers ──
 
-    const holdTimeoutRef = useRef<number | null>(null);
-    const isDraggingRef = useRef(false);
-    const dragVisitedRef = useRef<Set<number>>(new Set());
-    const dragActionRef = useRef<'mark' | 'unmark' | null>(null);
-
-    // Fetch ideas when showIdeas is enabled
-    useEffect(() => {
-        if (showIdeas && activeChapter) {
-            setLoadingIdeas(true);
-            fetchIdeasByChapterId(activeChapter.id)
-                .then(data => setIdeas(data))
-                .catch(() => { })
-                .finally(() => setLoadingIdeas(false));
-        } else {
-            setIdeas([]);
-        }
-    }, [showIdeas, activeChapter]);
-
-    // Fetch chat responses when showChat is enabled
-    useEffect(() => {
-        if (showChat && activeChapter) {
-            setLoadingChat(true);
-            setChatResponses([]);
-            setHighlightedSentenceIds(new Set());
-            setHighlightedChatResponseIdx(null);
-            fetchChatResponsesForChapter(activeChapter.id)
-                .then(data => setChatResponses(data))
-                .catch((_error) => {
-                    console.error('Failed to load chat responses:', _error);
-                    setChatResponses([]);
-                    setHighlightedSentenceIds(new Set());
-                    setHighlightedChatResponseIdx(null);
-                })
-                .finally(() => setLoadingChat(false));
-        } else {
-            setChatResponses([]);
-            setHighlightedSentenceIds(new Set());
-            setHighlightedChatResponseIdx(null);
-        }
-    }, [showChat, activeChapter]);
-
-    const sentenceIdeasMap = useMemo(() => {
-        const map = new Map<number, IdeaWithSentences[]>();
-        ideas.forEach(ideaWithSentences => {
-            ideaWithSentences.sentences.forEach(s => {
-                const list = map.get(s.sentenceId) || [];
-                list.push(ideaWithSentences);
-                map.set(s.sentenceId, list);
-            });
-        });
-        return map;
-    }, [ideas]);
-
-    const sentenceByIdMap = useMemo(() => {
-        return new Map(sentences.map(s => [s.id, s]));
-    }, [sentences]);
-
-    // Maps each sentence id to the list of chat responses that reference it
-    const sentenceChatIconMap = useMemo(() => {
-        // group chat responses by their context-sentence-set key
-        const groupKey = (ids: number[]) => [...ids].sort((a, b) => a - b).join(',');
-        const groupMap = new Map<string, PDFChatResponse[]>();
-        chatResponses.forEach(cr => {
-            const key = groupKey(cr.contextSentencesIds);
-            const list = groupMap.get(key) || [];
-            list.push(cr);
-            groupMap.set(key, list);
-        });
-
-        // for each group, find the last sentence (by page order) in each
-        // consecutive run among the page's sentences
-        const sentenceIds = sentences.map(s => s.id);
-        const result = new Map<number, PDFChatResponse[]>(); // sentenceId -> responses
-
-        groupMap.forEach((responses) => {
-            const contextSet = new Set(responses[0].contextSentencesIds);
-            // walk the page's sentence list and collect runs
-            let runEnd: number | null = null;
-            sentenceIds.forEach((sid, idx) => {
-                const inGroup = contextSet.has(sid);
-                const nextInGroup = contextSet.has(sentenceIds[idx + 1] ?? -1);
-                if (inGroup) {
-                    runEnd = sid;
-                    if (!nextInGroup) {
-                        // this is the last in the consecutive run — place the icon here
-                        result.set(runEnd, responses);
-                        runEnd = null;
-                    }
-                }
-            });
-        });
-
-        return result;
-    }, [chatResponses, sentences]);
-
-    const handleDeleteChatResponse = async (id: number) => {
-        await deleteChatResponse(id);
-        setChatResponses(prev => prev.filter(cr => cr.chatResponseId !== id));
-        setHighlightedSentenceIds(new Set());
-        setHighlightedChatResponseIdx(null);
-    };
-
-    const handleSaveChatResponse = async (id: number, newText: string) => {
-        const updated = await updateChatResponse(id, newText);
-        setChatResponses(prev => prev.map(cr => cr.chatResponseId === id ? updated : cr));
-        setSelectedChatResponse(updated);
-    };
-
-    // tracks which sentence icon is currently in "highlighted" state, and
-    // which response index within that group is next to be shown
-    const handleIdeaClick = (sentenceIdeas: IdeaWithSentences[]) => {
-        setSelectedIdeas(sentenceIdeas);
-    };
-
-    const handleChatIconClick = (cr: PDFChatResponse, sentenceId: number, idx: number) => {
-        const key = `icon_${sentenceId}_${idx}`;
-
-        if (highlightedChatResponseIdx === key) {
-            // Second click: open modal and clear highlight
-            setSelectedChatResponse(cr);
-            setHighlightedSentenceIds(new Set());
-            setHighlightedChatResponseIdx(null);
-        } else {
-            // First click: highlight all sentences for this response
-            setHighlightedSentenceIds(new Set(cr.contextSentencesIds));
-            setHighlightedChatResponseIdx(key);
-            setSelectedChatResponse(null);
-        }
-    };
-
-    // Called by PDFTools after generating, or when the toolbar button is clicked
-    const openSummaryView = useCallback((incoming?: ChapterSummary[]) => {
-        if (incoming) {
-            setSummaries(incoming);
-            setSummaryView(true);
-            return;
-        }
-        // Toggle: if already open, close; if closed, fetch then open
-        if (summaryView) {
-            setSummaryView(false);
-            return;
-        }
-        if (!activeChapter) return;
-        setLoadingSummary(true);
-        getSummaryByChapterId(activeChapter.id)
-            .then(data => {
-                setSummaries(data);
-                setSummaryView(true);
-            })
-            .catch(() => { /* silently ignore — user sees empty state */ })
-            .finally(() => setLoadingSummary(false));
-    }, [summaryView, activeChapter]);
-
-    // Close summary when chapter changes
     const handleJumpToChapter = useCallback((ch: { startPage: number }) => {
         goToPage(ch.startPage);
-        setSummaryView(false);
+        closeSummary();
         setSidebarOpen(false);
-    }, [goToPage]);
-
-    const handleDeleteSummary = useCallback(async (summaryId: number) => {
-        await deleteChapterSummary(summaryId);
-        setSummaries(prev => {
-            const remaining = prev.filter(s => s.id !== summaryId);
-            if (remaining.length === 0) setSummaryView(false);
-            return remaining;
-        });
-    }, []);
+    }, [goToPage, closeSummary]);
 
     if (metaLoading) {
         return <LoadingSpinner className="h-[calc(100vh-64px)]" size="lg" />;
     }
 
     const progressPercentage = (page / totalPages) * 100;
-
-    const addSentenceToMarked = (s: Sentence) => {
-        setMarkedSentences(prev =>
-            prev.some(m => m.id === s.id) ? prev : [...prev, s]
-        );
-    };
-
-    const removeSentenceFromMarked = (s: Sentence) => {
-        setMarkedSentences(prev => {
-            const newMarks = prev.filter(m => m.id !== s.id);
-            if (newMarks.length === 0) {
-                setIsMarkingMode(false);
-                setShowQueryBox(false);
-            }
-            return newMarks;
-        });
-    };
-
-    const applyDragAction = (s: Sentence, action: 'mark' | 'unmark') => {
-        if (dragVisitedRef.current.has(s.id)) return;
-        dragVisitedRef.current.add(s.id);
-
-        if (action === 'mark') {
-            addSentenceToMarked(s);
-            return;
-        }
-        removeSentenceFromMarked(s);
-    };
-
-    const resetDragState = () => {
-        isDraggingRef.current = false;
-        dragVisitedRef.current.clear();
-        dragActionRef.current = null;
-        if (holdTimeoutRef.current !== null) {
-            globalThis.clearTimeout(holdTimeoutRef.current);
-            holdTimeoutRef.current = null;
-        }
-    };
-
-    const handlePointerDown = (e: React.PointerEvent, s: Sentence) => {
-        const target = e.currentTarget as HTMLElement;
-        const firstSentenceMarked = markedSentences.some(m => m.id === s.id);
-
-        if (isMarkingMode) {
-            isDraggingRef.current = true;
-            dragVisitedRef.current.clear();
-            dragActionRef.current = firstSentenceMarked ? 'unmark' : 'mark';
-            target.setPointerCapture?.(e.pointerId);
-            applyDragAction(s, dragActionRef.current);
-            return;
-        }
-
-        holdTimeoutRef.current = globalThis.setTimeout(() => {
-            holdTimeoutRef.current = null;
-            isDraggingRef.current = true;
-            dragVisitedRef.current.clear();
-            dragActionRef.current = firstSentenceMarked ? 'unmark' : 'mark';
-            setIsMarkingMode(true);
-            target.setPointerCapture?.(e.pointerId);
-            applyDragAction(s, dragActionRef.current);
-            globalThis.navigator?.vibrate?.(50);
-        }, 500);
-    };
-
-    const handlePointerUp = () => {
-        resetDragState();
-    };
-
-    const handlePointerCancel = () => {
-        resetDragState();
-    };
-
-    const handlePointerMove = (e: React.PointerEvent) => {
-        if (!isMarkingMode || !isDraggingRef.current || !dragActionRef.current) return;
-
-        const element = document.elementFromPoint(e.clientX, e.clientY);
-        const sentenceNode = element?.closest('[data-sentence-id]') as HTMLElement | null;
-        if (!sentenceNode) return;
-
-        const sentenceIdValue = sentenceNode.dataset.sentenceId;
-        if (!sentenceIdValue) return;
-
-        const sentenceId = Number.parseInt(sentenceIdValue, 10);
-        if (Number.isNaN(sentenceId)) return;
-
-        const sentence = sentenceByIdMap.get(sentenceId);
-        if (!sentence) return;
-
-        applyDragAction(sentence, dragActionRef.current);
-    };
-
-    // During a drag, entering a sentence applies the current drag action
-    const handlePointerEnter = (s: Sentence) => {
-        if (isMarkingMode && isDraggingRef.current && dragActionRef.current) {
-            applyDragAction(s, dragActionRef.current);
-        }
-    };
-
-    const toggleSentenceMark = (s: Sentence) => {
-        const exists = markedSentences.some(m => m.id === s.id);
-        if (exists) {
-            removeSentenceFromMarked(s);
-            return;
-        }
-        addSentenceToMarked(s);
-    };
-
-    const handleSentenceKeyDown = (e: React.KeyboardEvent, s: Sentence) => {
-        if (!isMarkingMode) return;
-        if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            toggleSentenceMark(s);
-        }
-    };
-
-    const handleRequestExplanation = async () => {
-        if (!activeChapter) return;
-
-        const reqId = crypto.randomUUID();
-        const requestPayload = {
-            chapterId: activeChapter.id,
-            context: markedSentences.map(s => ({ sentenceId: s.id, sentenceContent: s.content }))
-        };
-
-        const newRequest = {
-            id: reqId,
-            type: 'explain' as const,
-            sentences: markedSentences,
-            timestamp: new Date(),
-            status: 'pending' as const,
-        };
-
-        setRequests(prev => [...prev, newRequest]);
-        setSelectedRequest(newRequest);
-        exitMarkingMode();
-
-        try {
-            const response = await fetchExplanation(requestPayload);
-            setRequests(prev => prev.map(r => r.id === reqId ? { ...r, status: 'success', response } : r));
-            setSelectedRequest(prev => prev?.id === reqId ? { ...prev, status: 'success', response } : prev);
-        } catch (_error) {
-            console.error('Failed to fetch explanation:', _error);
-            setRequests(prev => prev.map(r => r.id === reqId ? { ...r, status: 'error', response: 'Failed to fetch explanation.' } : r));
-            setSelectedRequest(prev => prev?.id === reqId ? { ...prev, status: 'error', response: 'Failed to fetch explanation.' } : prev);
-        }
-    };
-
-    const handleSendQuery = async () => {
-        if (!queryText.trim() || !activeChapter) return;
-
-        const q = queryText;
-        const reqId = crypto.randomUUID();
-        const requestPayload = {
-            chapterId: activeChapter.id,
-            query: q,
-            context: markedSentences.map(s => ({ sentenceId: s.id, sentenceContent: s.content }))
-        };
-
-        const newRequest = {
-            id: reqId,
-            type: 'query' as const,
-            query: q,
-            sentences: markedSentences,
-            timestamp: new Date(),
-            status: 'pending' as const,
-        };
-
-        setRequests(prev => [...prev, newRequest]);
-        setSelectedRequest(newRequest);
-        exitMarkingMode();
-
-        try {
-            const response = await fetchChat(requestPayload);
-            setRequests(prev => prev.map(r => r.id === reqId ? { ...r, status: 'success', response } : r));
-            setSelectedRequest(prev => prev?.id === reqId ? { ...prev, status: 'success', response } : prev);
-        } catch (_error) {
-            console.error('Failed to fetch chat response:', _error);
-            setRequests(prev => prev.map(r => r.id === reqId ? { ...r, status: 'error', response: 'Failed to fetch response.' } : r));
-            setSelectedRequest(prev => prev?.id === reqId ? { ...prev, status: 'error', response: 'Failed to fetch response.' } : prev);
-        }
-    };
-
-    const exitMarkingMode = () => {
-        setIsMarkingMode(false);
-        setMarkedSentences([]);
-        setShowQueryBox(false);
-        setQueryText('');
-    };
 
     // ── Chat icon shade palette ──
     const CHAT_ICON_SHADES = [
@@ -622,9 +291,9 @@ const PDFReader = () => {
                         summaryView={summaryView}
                         onToggleSummaryView={() => openSummaryView()}
                         showIdeas={showIdeas}
-                        onToggleIdeas={() => setShowIdeas(prev => !prev)}
+                        onToggleIdeas={toggleIdeas}
                         showChat={showChat}
-                        onToggleChat={() => setShowChat(prev => !prev)}
+                        onToggleChat={toggleChat}
                     />
 
                     {summaryView ? (
@@ -711,7 +380,7 @@ const PDFReader = () => {
                                     autoFocus
                                 />
                                 <button
-                                    onClick={handleSendQuery}
+                                    onClick={() => handleSendQuery(queryText)}
                                     disabled={!queryText.trim()}
                                     className="p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:hover:bg-blue-600 transition-colors mt-auto"
                                     aria-label="Send"
@@ -727,13 +396,13 @@ const PDFReader = () => {
 
                 <IdeaArgumentsModal
                     isOpen={selectedIdeas !== null}
-                    onClose={() => setSelectedIdeas(null)}
+                    onClose={closeIdeaModal}
                     ideas={selectedIdeas || []}
                 />
 
                 <ChatResponseModal
                     isOpen={selectedChatResponse !== null}
-                    onClose={() => setSelectedChatResponse(null)}
+                    onClose={closeChatModal}
                     chatResponse={selectedChatResponse}
                     onDelete={handleDeleteChatResponse}
                     onSave={handleSaveChatResponse}
@@ -742,7 +411,7 @@ const PDFReader = () => {
                 {/* Chat / Explanation Modal */}
                 <Modal
                     isOpen={selectedRequest !== null}
-                    onClose={() => setSelectedRequest(null)}
+                    onClose={closeRequestModal}
                     title={selectedRequest?.type === 'explain' ? 'Explanation' : 'Chat Response'}
                 >
                     <div className="space-y-4">

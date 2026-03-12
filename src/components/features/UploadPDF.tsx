@@ -109,9 +109,47 @@ const UploadPDF = () => {
     // Upload
     // -----------------------------------------------------------------------
 
+    const validateChapterRanges = (ranges: ChapterRangeInput[]): string | null => {
+        for (let i = 0; i < ranges.length; i++) {
+            const start = Number(ranges[i].startPage);
+            const end = Number(ranges[i].endPage);
+            if (!Number.isFinite(start) || !Number.isFinite(end) || start < 1 || end < 1) {
+                return `Chapter ${i + 1}: page numbers must be positive integers.`;
+            }
+            if (!Number.isInteger(start) || !Number.isInteger(end)) {
+                return `Chapter ${i + 1}: page numbers must be whole numbers.`;
+            }
+            if (start > end) {
+                return `Chapter ${i + 1}: start page (${start}) cannot exceed end page (${end}).`;
+            }
+            if (pageCount != null && end > pageCount) {
+                return `Chapter ${i + 1}: end page (${end}) exceeds the document length (${pageCount}).`;
+            }
+        }
+        // Check for overlapping ranges
+        const sorted = ranges
+            .map((r, idx) => ({ start: Number(r.startPage), end: Number(r.endPage), idx }))
+            .sort((a, b) => a.start - b.start);
+        for (let i = 1; i < sorted.length; i++) {
+            if (sorted[i].start <= sorted[i - 1].end) {
+                return `Chapters ${sorted[i - 1].idx + 1} and ${sorted[i].idx + 1} have overlapping page ranges.`;
+            }
+        }
+        return null;
+    };
+
     const handleUpload = async (e: React.SyntheticEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (!file) return;
+
+        // Validate chapter ranges before submission
+        if (chapterRanges.length > 0) {
+            const validationError = validateChapterRanges(chapterRanges);
+            if (validationError) {
+                setError(validationError);
+                return;
+            }
+        }
 
         setUploading(true);
         setError(null);

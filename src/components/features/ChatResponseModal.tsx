@@ -1,40 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { MessageSquare, HelpCircle, Pencil, Trash2, Check, X } from 'lucide-react';
 import { Modal, LoadingSpinner } from '@/components/ui';
 import type { PDFChatResponse } from '@/types';
+import { chatMdComponents } from './markdown/mdComponents';
 
-// ---------------------------------------------------------------------------
-// react-markdown component overrides (same style as SummaryViewer)
-// ---------------------------------------------------------------------------
-
-const mdComponents: React.ComponentProps<typeof ReactMarkdown>['components'] = {
-    h1: ({ children }) => <h1 className="text-2xl font-bold text-slate-900 mt-6 mb-3">{children}</h1>,
-    h2: ({ children }) => <h2 className="text-xl font-semibold text-slate-800 mt-5 mb-2">{children}</h2>,
-    h3: ({ children }) => <h3 className="text-base font-semibold text-slate-800 mt-4 mb-1.5">{children}</h3>,
-    p: ({ children }) => <p className="text-slate-700 leading-relaxed text-[1.05rem] mb-4">{children}</p>,
-    ul: ({ children }) => <ul className="space-y-1.5 pl-5 mb-4 list-none">{children}</ul>,
-    ol: ({ children }) => <ol className="space-y-1.5 pl-5 mb-4 list-decimal">{children}</ol>,
-    li: ({ children }) => (
-        <li className="flex items-start gap-2.5 text-slate-700 leading-relaxed text-[1.05rem]">
-            <span className="mt-2 w-1.5 h-1.5 rounded-full bg-teal-400 flex-shrink-0" />
-            <span>{children}</span>
-        </li>
-    ),
-    strong: ({ children }) => <strong className="font-semibold text-slate-900">{children}</strong>,
-    em: ({ children }) => <em className="italic text-slate-700">{children}</em>,
-    blockquote: ({ children }) => (
-        <blockquote className="border-l-4 border-teal-200 pl-4 py-0.5 my-3 text-slate-600 italic">{children}</blockquote>
-    ),
-    code: ({ children }) => (
-        <code className="bg-slate-100 text-slate-800 rounded px-1.5 py-0.5 text-[0.9em] font-mono">{children}</code>
-    ),
-    pre: ({ children }) => (
-        <pre className="bg-slate-100 rounded-xl px-4 py-3 overflow-x-auto text-sm font-mono mb-4">{children}</pre>
-    ),
-    hr: () => <hr className="border-slate-200 my-6" />,
-};
+const mdComponents = chatMdComponents;
 
 // ---------------------------------------------------------------------------
 // ChatResponseModal

@@ -13,6 +13,7 @@ import {
     Check,
 } from 'lucide-react';
 import type { ChapterSummary } from '@/types';
+import { summaryMdComponents } from './markdown/mdComponents';
 
 interface SummaryViewerProps {
     summaries: ChapterSummary[];
@@ -68,39 +69,7 @@ const DeleteConfirm: React.FC<DeleteConfirmProps> = ({ onConfirm, onCancel }) =>
 // re-creating component functions on every render (react-hooks/no-unstable-*)
 // ---------------------------------------------------------------------------
 
-const mdComponents: React.ComponentProps<typeof ReactMarkdown>['components'] = {
-    h1: ({ children }) => <h1 className="text-2xl font-bold text-slate-900 mt-6 mb-3">{children}</h1>,
-    h2: ({ children }) => <h2 className="text-xl font-semibold text-slate-800 mt-5 mb-2">{children}</h2>,
-    h3: ({ children }) => <h3 className="text-base font-semibold text-slate-800 mt-4 mb-1.5">{children}</h3>,
-    p: ({ children }) => <p className="text-slate-700 leading-relaxed text-[1.05rem] mb-4">{children}</p>,
-    ul: ({ children }) => <ul className="space-y-1.5 pl-5 mb-4 list-none">{children}</ul>,
-    ol: ({ children }) => <ol className="space-y-1.5 pl-5 mb-4 list-decimal">{children}</ol>,
-    li: ({ children }) => (
-        <li className="flex items-start gap-2.5 text-slate-700 leading-relaxed text-[1.05rem]">
-            <span className="mt-2 w-1.5 h-1.5 rounded-full bg-blue-400 flex-shrink-0" />
-            <span>{children}</span>
-        </li>
-    ),
-    strong: ({ children }) => <strong className="font-semibold text-slate-900">{children}</strong>,
-    em: ({ children }) => <em className="italic text-slate-700">{children}</em>,
-    blockquote: ({ children }) => (
-        <blockquote className="border-l-4 border-blue-200 pl-4 py-0.5 my-3 text-slate-600 italic">{children}</blockquote>
-    ),
-    code: ({ children }) => (
-        <code className="bg-slate-100 text-slate-800 rounded px-1.5 py-0.5 text-[0.9em] font-mono">{children}</code>
-    ),
-    pre: ({ children }) => (
-        <pre className="bg-slate-100 rounded-xl px-4 py-3 overflow-x-auto text-sm font-mono mb-4">{children}</pre>
-    ),
-    hr: () => <hr className="border-slate-200 my-6" />,
-    table: ({ children }) => (
-        <div className="overflow-x-auto mb-4">
-            <table className="w-full text-sm border-collapse">{children}</table>
-        </div>
-    ),
-    th: ({ children }) => <th className="border border-slate-200 px-3 py-2 bg-slate-50 font-semibold text-slate-700 text-left">{children}</th>,
-    td: ({ children }) => <td className="border border-slate-200 px-3 py-2 text-slate-700">{children}</td>,
-};
+const mdComponents = summaryMdComponents;
 
 // ---------------------------------------------------------------------------
 // Summary text renderer — plain or markdown
@@ -217,11 +186,6 @@ export const SummaryViewer: React.FC<SummaryViewerProps> = ({
     const selectedSummary = summaries.find(s => s.id === resolvedId) ?? null;
     const selectedIndex = summaries.findIndex(s => s.id === resolvedId);
 
-    // Reset to latest when summaries list changes (e.g. new one generated)
-    useEffect(() => {
-        setSelectedId(null);
-    }, [summaries.length]);
-
     // Scroll content to top when switching version
     useEffect(() => {
         contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
@@ -302,8 +266,8 @@ export const SummaryViewer: React.FC<SummaryViewerProps> = ({
                                     onClick={() => setMarkdownMode(m => !m)}
                                     title={markdownMode ? 'Switch to plain text' : 'Switch to markdown rendering'}
                                     className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors ${markdownMode
-                                            ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700'
-                                            : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
+                                        ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700'
+                                        : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
                                         }`}
                                 >
                                     <Sparkles className="w-3.5 h-3.5" />

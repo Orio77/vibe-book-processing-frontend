@@ -4,7 +4,6 @@ import {
     Sparkles,
     BookOpen,
     Lightbulb,
-    Target,
     Layers,
     Loader2,
 } from 'lucide-react';
@@ -13,7 +12,6 @@ import {
     getSummaryByChapterId,
     createBookSummary,
     markKeyIdeas,
-    markExamples,
 } from '@/lib/api';
 import type { ChapterSummary } from '@/types';
 import { useToast } from '@/hooks';
@@ -76,15 +74,6 @@ const PDFTools: React.FC<PDFToolsProps> = ({ pdfId, chapterId, chapterCount, onV
             'mark-ideas',
             () => markKeyIdeas(chapterId),
             'Key ideas have been marked!',
-        );
-    };
-
-    const handleMarkExamples = () => {
-        if (!chapterId) return;
-        runAction(
-            'mark-examples',
-            () => markExamples(pdfId, chapterId),
-            'Examples have been marked!',
         );
     };
 
@@ -199,6 +188,23 @@ function ToolButton({
     const isLoading = loadingAction === id;
     const isDisabled = disabled || loadingAction !== null;
 
+    // Explicit hover-border / text-color maps so Tailwind can statically detect every class
+    const hoverBorderMap: Record<string, string> = {
+        blue: 'hover:border-blue-300',
+        purple: 'hover:border-purple-300',
+        amber: 'hover:border-amber-300',
+        emerald: 'hover:border-emerald-300',
+    };
+    const textColorMap: Record<string, string> = {
+        blue: 'text-blue-600',
+        purple: 'text-purple-600',
+        amber: 'text-amber-600',
+        emerald: 'text-emerald-600',
+    };
+
+    const hoverBorder = hoverBorderMap[colorClass] ?? 'hover:border-slate-300';
+    const runTextColor = textColorMap[colorClass] ?? 'text-slate-600';
+
     return (
         <button
             onClick={onClick}
@@ -206,7 +212,7 @@ function ToolButton({
             className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all duration-200 group
         ${isDisabled
                     ? 'bg-slate-50 border-slate-100 text-slate-400 cursor-not-allowed'
-                    : `bg-white border-slate-200 text-slate-700 hover:border-${colorClass}-300 hover:shadow-sm ${hoverClass}`
+                    : `bg-white border-slate-200 text-slate-700 ${hoverBorder} hover:shadow-sm ${hoverClass}`
                 }
       `}
         >
@@ -224,7 +230,7 @@ function ToolButton({
             </div>
             {!isDisabled && !isLoading && (
                 <span
-                    className={`text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity text-${colorClass}-600`}
+                    className={`text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity ${runTextColor}`}
                 >
                     Run →
                 </span>
