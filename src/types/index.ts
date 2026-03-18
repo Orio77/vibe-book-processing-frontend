@@ -63,6 +63,12 @@ export interface IdeaArgumentDTO {
     text: string;
 }
 
+export interface IdeaExplanationDTO {
+    id: number;
+    ideaId: number;
+    text: string;
+}
+
 export interface PDFChatResponse {
     chatResponseId: number;
     query: string | null;
