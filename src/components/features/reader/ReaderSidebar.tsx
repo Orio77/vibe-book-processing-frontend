@@ -24,9 +24,11 @@ export function ReaderSidebar({
     return (
         <div
             className={`
-        fixed md:static inset-y-0 left-0 z-30 h-full bg-white border-r border-slate-200 transition-transform duration-300 ease-in-out shadow-xl md:shadow-none
-        ${sidebarOpen ? 'w-72 translate-x-0' : 'w-72 -translate-x-full md:translate-x-0'}
+        fixed md:relative inset-y-0 left-0 z-30 h-full bg-white transition-all duration-300 ease-in-out shadow-xl md:shadow-none overflow-hidden
+        ${sidebarOpen ? 'w-72 translate-x-0 border-r border-slate-200' : 'w-0 -translate-x-full md:translate-x-0 border-r-0'}
       `}
+            id="reader-sidebar"
+            aria-hidden={!sidebarOpen}
         >
             <div className="flex flex-col h-full">
                 <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">

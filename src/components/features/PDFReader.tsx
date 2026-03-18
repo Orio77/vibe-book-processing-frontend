@@ -26,6 +26,7 @@ const PDFReader = () => {
     } = usePdfReader(id);
 
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [toolbarExpanded, setToolbarExpanded] = useState(false);
 
     // ── Extracted domain hooks ──
     const {
@@ -284,7 +285,10 @@ const PDFReader = () => {
                         page={page}
                         totalPages={totalPages}
                         activeChapter={activeChapter}
+                        sidebarOpen={sidebarOpen}
                         onToggleSidebar={() => setSidebarOpen((o) => !o)}
+                        toolbarExpanded={toolbarExpanded}
+                        onToggleToolbar={() => setToolbarExpanded((t) => !t)}
                         onGoToPage={goToPage}
                         onPrev={prevPage}
                         onNext={nextPage}

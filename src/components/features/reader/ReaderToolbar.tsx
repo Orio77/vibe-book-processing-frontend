@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, ArrowLeft, Menu, Sparkles, BookOpen, Lightbulb, MessageSquare } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, ArrowLeft, Menu, Sparkles, BookOpen, Lightbulb, MessageSquare } from 'lucide-react';
 import { ROUTES } from '@/lib/constants';
 import type { Chapter } from '@/types';
 
@@ -7,7 +7,10 @@ interface ReaderToolbarProps {
     readonly page: number;
     readonly totalPages: number;
     readonly activeChapter: Chapter | undefined;
+    readonly sidebarOpen: boolean;
     readonly onToggleSidebar: () => void;
+    readonly toolbarExpanded: boolean;
+    readonly onToggleToolbar: () => void;
     readonly onGoToPage: (p: number) => void;
     readonly onPrev: () => void;
     readonly onNext: () => void;
@@ -23,7 +26,10 @@ export function ReaderToolbar({
     page,
     totalPages,
     activeChapter,
+    sidebarOpen,
     onToggleSidebar,
+    toolbarExpanded,
+    onToggleToolbar,
     onGoToPage,
     onPrev,
     onNext,
@@ -34,13 +40,47 @@ export function ReaderToolbar({
     showChat,
     onToggleChat,
 }: ReaderToolbarProps) {
+    if (!toolbarExpanded) {
+        return (
+            <div className="bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-2.5 flex items-center justify-between sticky top-0 z-10">
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={onToggleSidebar}
+                        className="p-2 -ml-2 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"
+                        aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+                        aria-controls="reader-sidebar"
+                        aria-expanded={sidebarOpen}
+                    >
+                        <Menu size={20} />
+                    </button>
+                    <span className="text-sm text-slate-500 font-medium">
+                        Page {page} / {totalPages}
+                    </span>
+                </div>
+
+                <button
+                    onClick={onToggleToolbar}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors text-sm font-medium"
+                    aria-label="Expand top bar"
+                    aria-controls="reader-toolbar-content"
+                    aria-expanded={toolbarExpanded}
+                >
+                    <ChevronDown size={16} />
+                    Expand bar
+                </button>
+            </div>
+        );
+    }
+
     return (
         <div className="bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-10">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3" id="reader-toolbar-content">
                 <button
                     onClick={onToggleSidebar}
-                    className="p-2 -ml-2 rounded-lg hover:bg-slate-100 md:hidden text-slate-500 transition-colors"
-                    aria-label="Toggle sidebar"
+                    className="p-2 -ml-2 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"
+                    aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+                    aria-controls="reader-sidebar"
+                    aria-expanded={sidebarOpen}
                 >
                     <Menu size={20} />
                 </button>
@@ -95,8 +135,8 @@ export function ReaderToolbar({
                         <button
                             onClick={onToggleChat}
                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${showChat
-                                    ? 'bg-teal-600 text-white shadow-sm'
-                                    : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-teal-50 hover:text-teal-700 hover:border-teal-200'
+                                ? 'bg-teal-600 text-white shadow-sm'
+                                : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-teal-50 hover:text-teal-700 hover:border-teal-200'
                                 }`}
                         >
                             <MessageSquare size={14} /> Chat
@@ -139,6 +179,15 @@ export function ReaderToolbar({
                         <ChevronRight size={20} />
                     </button>
                 </div>
+                <button
+                    onClick={onToggleToolbar}
+                    className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors"
+                    aria-label="Collapse top bar"
+                    aria-controls="reader-toolbar-content"
+                    aria-expanded={toolbarExpanded}
+                >
+                    <ChevronUp size={18} />
+                </button>
             </div>
         </div>
     );
