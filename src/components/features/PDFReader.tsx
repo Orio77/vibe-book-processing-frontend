@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react';
 import { usePdfReader, useReaderIdeas, useReaderChat, useReaderSummary, useSentenceMarking, useReaderRequests } from '@/hooks';
@@ -27,6 +27,7 @@ const PDFReader = () => {
 
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [toolbarExpanded, setToolbarExpanded] = useState(false);
+    const [readerViewMode, setReaderViewMode] = useState(false);
 
     // ── Extracted domain hooks ──
     const {
@@ -94,6 +95,51 @@ const PDFReader = () => {
         setSidebarOpen(false);
     }, [goToPage, closeSummary]);
 
+    const handleExitReaderView = useCallback(() => {
+        setReaderViewMode(false);
+    }, []);
+
+    const handleToggleReaderView = useCallback(() => {
+        setReaderViewMode((prev) => {
+            const next = !prev;
+            if (next) {
+                setSidebarOpen(false);
+                closeSummary();
+                exitMarkingMode();
+                closeIdeaModal();
+                closeChatModal();
+                closeRequestModal();
+            }
+            return next;
+        });
+    }, [closeSummary, exitMarkingMode, closeIdeaModal, closeChatModal, closeRequestModal]);
+
+    useEffect(() => {
+        if (!readerViewMode) return;
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                handleExitReaderView();
+            }
+        };
+
+        globalThis.addEventListener('keydown', handleKeyDown);
+        return () => {
+            globalThis.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [readerViewMode, handleExitReaderView]);
+
+    useEffect(() => {
+        if (!readerViewMode) return;
+
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+
+        return () => {
+            document.body.style.overflow = previousOverflow;
+        };
+    }, [readerViewMode]);
+
     if (metaLoading) {
         return <LoadingSpinner className="h-[calc(100vh-64px)]" size="lg" />;
     }
@@ -146,6 +192,14 @@ const PDFReader = () => {
     };
 
     const renderSentence = (s: Sentence) => {
+        if (readerViewMode) {
+            return (
+                <span key={s.id} className="inline">
+                    {s.content}{' '}
+                </span>
+            );
+        }
+
         const ideasForSentence = sentenceIdeasMap.get(s.id);
         const isIdea = showIdeas && ideasForSentence && ideasForSentence.length > 0;
         const isMarked = markedSentences.some(m => m.id === s.id);
@@ -227,13 +281,13 @@ const PDFReader = () => {
                     </div>
                 )}
                 <div className="text-lg relative">
-                    {loadingIdeas && (
+                    {loadingIdeas && !readerViewMode && (
                         <div className="absolute top-0 right-0 -mt-6 -mr-4 bg-white/80 p-2 rounded-lg shadow-sm backdrop-blur-sm shadow-blue-100 border border-blue-100 z-10 flex items-center text-sm text-blue-600">
                             <LoadingSpinner className="w-4 h-4 mr-2" />
                             Loading ideas...
                         </div>
                     )}
-                    {loadingChat && (
+                    {loadingChat && !readerViewMode && (
                         <div className="absolute top-0 right-0 -mt-6 -mr-4 bg-white/80 p-2 rounded-lg shadow-sm backdrop-blur-sm shadow-teal-100 border border-teal-100 z-10 flex items-center text-sm text-teal-600">
                             <LoadingSpinner className="w-4 h-4 mr-2" />
                             Loading chat responses...
@@ -247,197 +301,202 @@ const PDFReader = () => {
 
     return (
         <div className="flex flex-col h-[calc(100vh-64px)] overflow-hidden bg-slate-50 relative">
-            {/* Progress Bar */}
-            <div className="w-full h-1 bg-slate-200 z-30 flex-shrink-0">
-                <div
-                    className="h-full bg-blue-600 transition-all duration-300 ease-out"
-                    style={{ width: `${progressPercentage}%` }}
-                />
-            </div>
+            {readerViewMode ? (
+                <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
+                    <div className="max-w-3xl mx-auto py-8 px-6 sm:px-10 lg:py-12">
+                        {renderBookContent()}
+                    </div>
+                </div>
+            ) : (
+                <>
+                    {/* Progress Bar */}
+                    <div className="w-full h-1 bg-slate-200 z-30 flex-shrink-0">
+                        <div
+                            className="h-full bg-blue-600 transition-all duration-300 ease-out"
+                            style={{ width: `${progressPercentage}%` }}
+                        />
+                    </div>
 
-            {/* Reader body */}
-            <div className="flex flex-1 min-h-0 overflow-hidden relative">
+                    {/* Reader body */}
+                    <div className="flex flex-1 min-h-0 overflow-hidden relative">
+                        {/* Mobile Sidebar Overlay */}
+                        {sidebarOpen && (
+                            <button
+                                type="button"
+                                className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-20 md:hidden transition-opacity cursor-default"
+                                onClick={() => setSidebarOpen(false)}
+                                aria-label="Close sidebar"
+                            />
+                        )}
 
-                {/* Mobile Sidebar Overlay */}
-                {sidebarOpen && (
-                    <button
-                        type="button"
-                        className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-20 md:hidden transition-opacity cursor-default"
-                        onClick={() => setSidebarOpen(false)}
-                        aria-label="Close sidebar"
-                    />
-                )}
+                        {/* Sidebar */}
+                        <ReaderSidebar
+                            pdfInfo={pdfInfo}
+                            chapters={chapters}
+                            activeChapter={activeChapter}
+                            sidebarOpen={sidebarOpen}
+                            onClose={() => setSidebarOpen(false)}
+                            onJumpToChapter={handleJumpToChapter}
+                            onViewSummary={openSummaryView}
+                        />
 
-                {/* Sidebar */}
-                <ReaderSidebar
-                    pdfInfo={pdfInfo}
-                    chapters={chapters}
-                    activeChapter={activeChapter}
-                    sidebarOpen={sidebarOpen}
-                    onClose={() => setSidebarOpen(false)}
-                    onJumpToChapter={handleJumpToChapter}
-                    onViewSummary={openSummaryView}
-                />
+                        {/* Main Content Area */}
+                        <div className="flex-1 flex flex-col min-w-0 relative">
+                            <ReaderToolbar
+                                page={page}
+                                totalPages={totalPages}
+                                activeChapter={activeChapter}
+                                sidebarOpen={sidebarOpen}
+                                onToggleSidebar={() => setSidebarOpen((o) => !o)}
+                                toolbarExpanded={toolbarExpanded}
+                                onToggleToolbar={() => setToolbarExpanded((t) => !t)}
+                                readerViewMode={readerViewMode}
+                                onToggleReaderView={handleToggleReaderView}
+                                onGoToPage={goToPage}
+                                onPrev={prevPage}
+                                onNext={nextPage}
+                                summaryView={summaryView}
+                                onToggleSummaryView={() => openSummaryView()}
+                                showIdeas={showIdeas}
+                                onToggleIdeas={toggleIdeas}
+                                showChat={showChat}
+                                onToggleChat={toggleChat}
+                            />
 
-                {/* Main Content Area */}
-                <div className="flex-1 flex flex-col min-w-0 relative">
-                    <ReaderToolbar
-                        page={page}
-                        totalPages={totalPages}
-                        activeChapter={activeChapter}
-                        sidebarOpen={sidebarOpen}
-                        onToggleSidebar={() => setSidebarOpen((o) => !o)}
-                        toolbarExpanded={toolbarExpanded}
-                        onToggleToolbar={() => setToolbarExpanded((t) => !t)}
-                        onGoToPage={goToPage}
-                        onPrev={prevPage}
-                        onNext={nextPage}
-                        summaryView={summaryView}
-                        onToggleSummaryView={() => openSummaryView()}
-                        showIdeas={showIdeas}
-                        onToggleIdeas={toggleIdeas}
-                        showChat={showChat}
-                        onToggleChat={toggleChat}
-                    />
-
-                    {summaryView ? (
-                        /* ── Summary Panel ── */
-                        <div className="flex-1 min-h-0">
-                            {loadingSummary ? (
-                                <LoadingSpinner className="h-full" />
+                            {summaryView ? (
+                                <div className="flex-1 min-h-0">
+                                    {loadingSummary ? (
+                                        <LoadingSpinner className="h-full" />
+                                    ) : (
+                                        <SummaryViewer
+                                            summaries={summaries}
+                                            onDeleteSummary={handleDeleteSummary}
+                                            chapterTitle={activeChapter?.title}
+                                        />
+                                    )}
+                                </div>
                             ) : (
-                                <SummaryViewer
-                                    summaries={summaries}
-                                    onDeleteSummary={handleDeleteSummary}
-                                    chapterTitle={activeChapter?.title}
-                                />
+                                <div className="flex-1 overflow-y-auto custom-scrollbar scroll-smooth">
+                                    <div className="max-w-3xl mx-auto py-8 px-4 sm:px-8 lg:py-12">
+                                        <div className="bg-white shadow-sm border border-slate-200 rounded-2xl min-h-[600px] p-8 sm:p-12 lg:p-16 prose prose-slate prose-lg max-w-none">
+                                            {renderBookContent()}
+                                        </div>
+
+                                        <div className="mt-8 flex justify-between items-center text-sm text-slate-500 px-4">
+                                            <button
+                                                onClick={prevPage}
+                                                disabled={page <= 1}
+                                                className="hover:text-blue-600 disabled:opacity-50 transition-colors flex items-center"
+                                            >
+                                                <ChevronLeft size={16} className="mr-1" /> Previous Page
+                                            </button>
+                                            <span>
+                                                {page} / {totalPages}
+                                            </span>
+                                            <button
+                                                onClick={nextPage}
+                                                disabled={page >= totalPages}
+                                                className="hover:text-blue-600 disabled:opacity-50 transition-colors flex items-center"
+                                            >
+                                                Next Page <ChevronRight size={16} className="ml-1" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
                             )}
                         </div>
-                    ) : (
-                        /* ── Book Content ── */
-                        <div className="flex-1 overflow-y-auto custom-scrollbar scroll-smooth">
-                            <div className="max-w-3xl mx-auto py-8 px-4 sm:px-8 lg:py-12">
-                                <div className="bg-white shadow-sm border border-slate-200 rounded-2xl min-h-[600px] p-8 sm:p-12 lg:p-16 prose prose-slate prose-lg max-w-none">
-                                    {renderBookContent()}
-                                </div>
 
-                                {/* Bottom Navigation */}
-                                <div className="mt-8 flex justify-between items-center text-sm text-slate-500 px-4">
-                                    <button
-                                        onClick={prevPage}
-                                        disabled={page <= 1}
-                                        className="hover:text-blue-600 disabled:opacity-50 transition-colors flex items-center"
-                                    >
-                                        <ChevronLeft size={16} className="mr-1" /> Previous Page
-                                    </button>
-                                    <span>
-                                        {page} / {totalPages}
+                        {isMarkingMode && markedSentences.length > 0 && (
+                            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white shadow-xl border border-slate-200 rounded-xl p-4 z-40 flex flex-col items-center animate-in slide-in-from-bottom flex-wrap min-w-[300px]">
+                                <div className="flex items-center space-x-3 mb-2">
+                                    <span className="text-sm font-medium text-slate-600 mr-2">
+                                        {markedSentences.length} sentence{markedSentences.length !== 1 && 's'} selected
                                     </span>
                                     <button
-                                        onClick={nextPage}
-                                        disabled={page >= totalPages}
-                                        className="hover:text-blue-600 disabled:opacity-50 transition-colors flex items-center"
+                                        onClick={handleRequestExplanation}
+                                        className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 font-medium text-sm transition-colors"
                                     >
-                                        Next Page <ChevronRight size={16} className="ml-1" />
+                                        Request Explanation
+                                    </button>
+                                    <button
+                                        onClick={() => setShowQueryBox(true)}
+                                        className="px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 font-medium text-sm transition-colors"
+                                    >
+                                        Send Query
+                                    </button>
+                                    <button
+                                        onClick={exitMarkingMode}
+                                        className="p-2 text-slate-400 hover:text-slate-600 rounded-lg transition-colors ml-2"
+                                        aria-label="Cancel"
+                                    >
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
                                     </button>
                                 </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
 
-                {/* Floating Marking Toolbar */}
-                {isMarkingMode && markedSentences.length > 0 && (
-                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white shadow-xl border border-slate-200 rounded-xl p-4 z-40 flex flex-col items-center animate-in slide-in-from-bottom flex-wrap min-w-[300px]">
-                        <div className="flex items-center space-x-3 mb-2">
-                            <span className="text-sm font-medium text-slate-600 mr-2">
-                                {markedSentences.length} sentence{markedSentences.length !== 1 && 's'} selected
-                            </span>
-                            <button
-                                onClick={handleRequestExplanation}
-                                className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 font-medium text-sm transition-colors"
-                            >
-                                Request Explanation
-                            </button>
-                            <button
-                                onClick={() => setShowQueryBox(true)}
-                                className="px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 font-medium text-sm transition-colors"
-                            >
-                                Send Query
-                            </button>
-                            <button
-                                onClick={exitMarkingMode}
-                                className="p-2 text-slate-400 hover:text-slate-600 rounded-lg transition-colors ml-2"
-                                aria-label="Cancel"
-                            >
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
-                            </button>
-                        </div>
-
-                        {showQueryBox && (
-                            <div className="w-full mt-3 flex items-start space-x-2 animate-in fade-in">
-                                <textarea
-                                    value={queryText}
-                                    onChange={(e) => setQueryText(e.target.value)}
-                                    placeholder="Ask a question about the selected sentences..."
-                                    className="flex-1 min-h-[4rem] max-h-[8rem] resize-y p-3 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent custom-scrollbar"
-                                    autoFocus
-                                />
-                                <button
-                                    onClick={() => handleSendQuery(queryText)}
-                                    disabled={!queryText.trim()}
-                                    className="p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:hover:bg-blue-600 transition-colors mt-auto"
-                                    aria-label="Send"
-                                >
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" /></svg>
-                                </button>
+                                {showQueryBox && (
+                                    <div className="w-full mt-3 flex items-start space-x-2 animate-in fade-in">
+                                        <textarea
+                                            value={queryText}
+                                            onChange={(e) => setQueryText(e.target.value)}
+                                            placeholder="Ask a question about the selected sentences..."
+                                            className="flex-1 min-h-[4rem] max-h-[8rem] resize-y p-3 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent custom-scrollbar"
+                                            autoFocus
+                                        />
+                                        <button
+                                            onClick={() => handleSendQuery(queryText)}
+                                            disabled={!queryText.trim()}
+                                            className="p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:hover:bg-blue-600 transition-colors mt-auto"
+                                            aria-label="Send"
+                                        >
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" /></svg>
+                                        </button>
+                                    </div>
+                                )}
+                                <div className="hidden" aria-hidden="true" data-requests-count={requests.length}></div>
                             </div>
                         )}
-                        {/* Hidden debug log for requests */}
-                        <div className="hidden" aria-hidden="true" data-requests-count={requests.length}></div>
-                    </div>
-                )}
 
-                <IdeaArgumentsModal
-                    isOpen={selectedIdeas !== null}
-                    onClose={closeIdeaModal}
-                    ideas={selectedIdeas || []}
-                />
+                        <IdeaArgumentsModal
+                            isOpen={selectedIdeas !== null}
+                            onClose={closeIdeaModal}
+                            ideas={selectedIdeas || []}
+                        />
 
-                <ChatResponseModal
-                    isOpen={selectedChatResponse !== null}
-                    onClose={closeChatModal}
-                    chatResponse={selectedChatResponse}
-                    onDelete={handleDeleteChatResponse}
-                    onSave={handleSaveChatResponse}
-                />
+                        <ChatResponseModal
+                            isOpen={selectedChatResponse !== null}
+                            onClose={closeChatModal}
+                            chatResponse={selectedChatResponse}
+                            onDelete={handleDeleteChatResponse}
+                            onSave={handleSaveChatResponse}
+                        />
 
-                {/* Chat / Explanation Modal */}
-                <Modal
-                    isOpen={selectedRequest !== null}
-                    onClose={closeRequestModal}
-                    title={selectedRequest?.type === 'explain' ? 'Explanation' : 'Chat Response'}
-                >
-                    <div className="space-y-4">
-                        <div className="bg-slate-50 p-4 rounded-lg text-sm text-slate-600">
-                            <strong>Reference context:</strong>
-                            <ul className="list-disc pl-5 mt-2 space-y-1">
-                                {selectedRequest?.sentences.map(s => (
-                                    <li key={s.id}>{s.content}</li>
-                                ))}
-                            </ul>
-                        </div>
-                        {selectedRequest?.query && (
-                            <div className="font-medium text-slate-800">
-                                <strong>Q:</strong> {selectedRequest.query}
+                        <Modal
+                            isOpen={selectedRequest !== null}
+                            onClose={closeRequestModal}
+                            title={selectedRequest?.type === 'explain' ? 'Explanation' : 'Chat Response'}
+                        >
+                            <div className="space-y-4">
+                                <div className="bg-slate-50 p-4 rounded-lg text-sm text-slate-600">
+                                    <strong>Reference context:</strong>
+                                    <ul className="list-disc pl-5 mt-2 space-y-1">
+                                        {selectedRequest?.sentences.map(s => (
+                                            <li key={s.id}>{s.content}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                                {selectedRequest?.query && (
+                                    <div className="font-medium text-slate-800">
+                                        <strong>Q:</strong> {selectedRequest.query}
+                                    </div>
+                                )}
+                                <div className="mt-4 text-slate-800">
+                                    {renderRequestStatus()}
+                                </div>
                             </div>
-                        )}
-                        <div className="mt-4 text-slate-800">
-                            {renderRequestStatus()}
-                        </div>
+                        </Modal>
                     </div>
-                </Modal>
-            </div>{/* end Reader body */}
+                </>
+            )}
         </div>
     );
 };

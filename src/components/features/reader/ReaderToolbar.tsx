@@ -11,6 +11,8 @@ interface ReaderToolbarProps {
     readonly onToggleSidebar: () => void;
     readonly toolbarExpanded: boolean;
     readonly onToggleToolbar: () => void;
+    readonly readerViewMode: boolean;
+    readonly onToggleReaderView: () => void;
     readonly onGoToPage: (p: number) => void;
     readonly onPrev: () => void;
     readonly onNext: () => void;
@@ -22,41 +24,88 @@ interface ReaderToolbarProps {
     readonly onToggleChat: () => void;
 }
 
-export function ReaderToolbar({
+interface ReaderViewToggleButtonProps {
+    readonly readerViewMode: boolean;
+    readonly onToggleReaderView: () => void;
+}
+
+function ReaderViewToggleButton({
+    readerViewMode,
+    onToggleReaderView,
+}: ReaderViewToggleButtonProps) {
+    return (
+        <button
+            onClick={onToggleReaderView}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${readerViewMode
+                ? 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800'
+                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                }`}
+            aria-label={readerViewMode ? 'Exit reader view' : 'Enter reader view'}
+            aria-pressed={readerViewMode}
+        >
+            <BookOpen size={14} />
+            {readerViewMode ? 'Exit Reader View' : 'Reader View'}
+        </button>
+    );
+}
+
+interface SidebarToggleButtonProps {
+    readonly sidebarOpen: boolean;
+    readonly onToggleSidebar: () => void;
+}
+
+function SidebarToggleButton({ sidebarOpen, onToggleSidebar }: SidebarToggleButtonProps) {
+    return (
+        <button
+            onClick={onToggleSidebar}
+            className="p-2 -ml-2 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"
+            aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+            aria-controls="reader-sidebar"
+            aria-expanded={sidebarOpen}
+        >
+            <Menu size={20} />
+        </button>
+    );
+}
+
+function CollapsedToolbar({
     page,
     totalPages,
-    activeChapter,
     sidebarOpen,
     onToggleSidebar,
     toolbarExpanded,
     onToggleToolbar,
-    onGoToPage,
-    onPrev,
-    onNext,
-    summaryView,
-    onToggleSummaryView,
-    showIdeas,
-    onToggleIdeas,
-    showChat,
-    onToggleChat,
-}: ReaderToolbarProps) {
-    if (!toolbarExpanded) {
-        return (
-            <div className="bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-2.5 flex items-center justify-between sticky top-0 z-10">
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={onToggleSidebar}
-                        className="p-2 -ml-2 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"
-                        aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
-                        aria-controls="reader-sidebar"
-                        aria-expanded={sidebarOpen}
-                    >
-                        <Menu size={20} />
-                    </button>
-                    <span className="text-sm text-slate-500 font-medium">
-                        Page {page} / {totalPages}
-                    </span>
-                </div>
+    readerViewMode,
+    onToggleReaderView,
+}: Pick<ReaderToolbarProps,
+    | 'page'
+    | 'totalPages'
+    | 'sidebarOpen'
+    | 'onToggleSidebar'
+    | 'toolbarExpanded'
+    | 'onToggleToolbar'
+    | 'readerViewMode'
+    | 'onToggleReaderView'
+>) {
+    return (
+        <div className="bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-2.5 flex items-center justify-between sticky top-0 z-10">
+            <div className="flex items-center gap-3">
+                {!readerViewMode && (
+                    <SidebarToggleButton
+                        sidebarOpen={sidebarOpen}
+                        onToggleSidebar={onToggleSidebar}
+                    />
+                )}
+                <span className="text-sm text-slate-500 font-medium">
+                    Page {page} / {totalPages}
+                </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+                <ReaderViewToggleButton
+                    readerViewMode={readerViewMode}
+                    onToggleReaderView={onToggleReaderView}
+                />
 
                 <button
                     onClick={onToggleToolbar}
@@ -69,21 +118,39 @@ export function ReaderToolbar({
                     Expand bar
                 </button>
             </div>
-        );
-    }
+        </div>
+    );
+}
 
+function ExpandedToolbar({
+    page,
+    totalPages,
+    activeChapter,
+    sidebarOpen,
+    onToggleSidebar,
+    toolbarExpanded,
+    onToggleToolbar,
+    readerViewMode,
+    onToggleReaderView,
+    onGoToPage,
+    onPrev,
+    onNext,
+    summaryView,
+    onToggleSummaryView,
+    showIdeas,
+    onToggleIdeas,
+    showChat,
+    onToggleChat,
+}: ReaderToolbarProps) {
     return (
         <div className="bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-10">
             <div className="flex items-center gap-3" id="reader-toolbar-content">
-                <button
-                    onClick={onToggleSidebar}
-                    className="p-2 -ml-2 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"
-                    aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
-                    aria-controls="reader-sidebar"
-                    aria-expanded={sidebarOpen}
-                >
-                    <Menu size={20} />
-                </button>
+                {!readerViewMode && (
+                    <SidebarToggleButton
+                        sidebarOpen={sidebarOpen}
+                        onToggleSidebar={onToggleSidebar}
+                    />
+                )}
                 <Link
                     to={ROUTES.HOME}
                     className="hidden sm:flex items-center text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors bg-slate-50 hover:bg-slate-100 px-3 py-1.5 rounded-md"
@@ -103,8 +170,7 @@ export function ReaderToolbar({
                     </span>
                 )}
 
-                {/* Summary view toggle — only shown when inside a chapter */}
-                {activeChapter && (
+                {activeChapter && !readerViewMode && (
                     <>
                         <div className="h-4 w-px bg-slate-200 mx-1" />
                         <button
@@ -179,6 +245,10 @@ export function ReaderToolbar({
                         <ChevronRight size={20} />
                     </button>
                 </div>
+                <ReaderViewToggleButton
+                    readerViewMode={readerViewMode}
+                    onToggleReaderView={onToggleReaderView}
+                />
                 <button
                     onClick={onToggleToolbar}
                     className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors"
@@ -191,4 +261,14 @@ export function ReaderToolbar({
             </div>
         </div>
     );
+}
+
+export function ReaderToolbar({
+    ...props
+}: ReaderToolbarProps) {
+    if (!props.toolbarExpanded) {
+        return <CollapsedToolbar {...props} />;
+    }
+
+    return <ExpandedToolbar {...props} />;
 }
