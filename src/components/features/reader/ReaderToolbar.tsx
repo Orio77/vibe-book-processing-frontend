@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, ArrowLeft, Menu, Sparkles, BookOpen, Lightbulb, MessageSquare } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, ArrowLeft, Menu, Sparkles, BookOpen, Lightbulb, MessageSquare, Settings2 } from 'lucide-react';
 import { ROUTES } from '@/lib/constants';
 import type { Chapter } from '@/types';
 
@@ -13,6 +13,7 @@ interface ReaderToolbarProps {
     readonly onToggleToolbar: () => void;
     readonly readerViewMode: boolean;
     readonly onToggleReaderView: () => void;
+    readonly onOpenReaderSettings: () => void;
     readonly onGoToPage: (p: number) => void;
     readonly onPrev: () => void;
     readonly onNext: () => void;
@@ -27,6 +28,10 @@ interface ReaderToolbarProps {
 interface ReaderViewToggleButtonProps {
     readonly readerViewMode: boolean;
     readonly onToggleReaderView: () => void;
+}
+
+interface ReaderSettingsButtonProps {
+    readonly onOpenReaderSettings: () => void;
 }
 
 function ReaderViewToggleButton({
@@ -45,6 +50,19 @@ function ReaderViewToggleButton({
         >
             <BookOpen size={14} />
             {readerViewMode ? 'Exit Reader View' : 'Reader View'}
+        </button>
+    );
+}
+
+function ReaderSettingsButton({ onOpenReaderSettings }: ReaderSettingsButtonProps) {
+    return (
+        <button
+            onClick={onOpenReaderSettings}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition-colors text-sm font-medium"
+            aria-label="Open reader view settings"
+        >
+            <Settings2 size={14} />
+            Reader Settings
         </button>
     );
 }
@@ -77,6 +95,7 @@ function CollapsedToolbar({
     onToggleToolbar,
     readerViewMode,
     onToggleReaderView,
+    onOpenReaderSettings,
 }: Pick<ReaderToolbarProps,
     | 'page'
     | 'totalPages'
@@ -86,6 +105,7 @@ function CollapsedToolbar({
     | 'onToggleToolbar'
     | 'readerViewMode'
     | 'onToggleReaderView'
+    | 'onOpenReaderSettings'
 >) {
     return (
         <div className="bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-2.5 flex items-center justify-between sticky top-0 z-10">
@@ -106,6 +126,8 @@ function CollapsedToolbar({
                     readerViewMode={readerViewMode}
                     onToggleReaderView={onToggleReaderView}
                 />
+
+                <ReaderSettingsButton onOpenReaderSettings={onOpenReaderSettings} />
 
                 <button
                     onClick={onToggleToolbar}
@@ -132,6 +154,7 @@ function ExpandedToolbar({
     onToggleToolbar,
     readerViewMode,
     onToggleReaderView,
+    onOpenReaderSettings,
     onGoToPage,
     onPrev,
     onNext,
@@ -249,6 +272,7 @@ function ExpandedToolbar({
                     readerViewMode={readerViewMode}
                     onToggleReaderView={onToggleReaderView}
                 />
+                <ReaderSettingsButton onOpenReaderSettings={onOpenReaderSettings} />
                 <button
                     onClick={onToggleToolbar}
                     className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors"

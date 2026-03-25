@@ -6,3 +6,4 @@ export { useReaderChat } from './useReaderChat';
 export { useReaderSummary } from './useReaderSummary';
 export { useSentenceMarking } from './useSentenceMarking';
 export { useReaderRequests } from './useReaderRequests';
+export { useReaderViewSettings } from './useReaderViewSettings';

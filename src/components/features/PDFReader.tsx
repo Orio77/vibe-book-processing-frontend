@@ -1,13 +1,44 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react';
-import { usePdfReader, useReaderIdeas, useReaderChat, useReaderSummary, useSentenceMarking, useReaderRequests } from '@/hooks';
+import { usePdfReader, useReaderIdeas, useReaderChat, useReaderSummary, useSentenceMarking, useReaderRequests, useReaderViewSettings } from '@/hooks';
 import { LoadingSpinner, Modal } from '@/components/ui';
 import { ReaderSidebar, ReaderToolbar, PageSkeleton, BlankPage } from './reader';
 import { SummaryViewer } from './SummaryViewer';
 import { IdeaArgumentsModal } from './IdeaArgumentsModal';
 import { ChatResponseModal } from './ChatResponseModal';
 import type { Sentence, PDFChatResponse } from '@/types';
+
+const READER_THEME_CLASSES = {
+    light: {
+        background: 'bg-white',
+        text: 'text-slate-800',
+    },
+    sepia: {
+        background: 'bg-amber-50',
+        text: 'text-amber-900',
+    },
+    dark: {
+        background: 'bg-slate-950',
+        text: 'text-slate-100',
+    },
+} as const;
+
+const READER_TEXT_WIDTH_CLASSES = {
+    narrow: 'max-w-2xl',
+    medium: 'max-w-3xl',
+    wide: 'max-w-5xl',
+} as const;
+
+const PAGE_FLIP_PULL_THRESHOLD = 120;
+
+type PageFlipDirection = 'forward' | 'backward';
+
+type PullIndicatorState = {
+    active: boolean;
+    direction: PageFlipDirection | null;
+    progress: number;
+};
 
 const PDFReader = () => {
     const { id } = useParams<{ id: string }>();
@@ -28,6 +59,36 @@ const PDFReader = () => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [toolbarExpanded, setToolbarExpanded] = useState(false);
     const [readerViewMode, setReaderViewMode] = useState(false);
+    const [readerSettingsOpen, setReaderSettingsOpen] = useState(false);
+    const [isCoarsePointer, setIsCoarsePointer] = useState(false);
+    const [pullIndicator, setPullIndicator] = useState<PullIndicatorState>({
+        active: false,
+        direction: null,
+        progress: 0,
+    });
+
+    const readerViewContainerRef = useRef<HTMLDivElement | null>(null);
+    const pullGestureRef = useRef<{
+        pointerId: number | null;
+        startX: number;
+        startY: number;
+        canForward: boolean;
+        canBackward: boolean;
+        active: boolean;
+    }>({
+        pointerId: null,
+        startX: 0,
+        startY: 0,
+        canForward: false,
+        canBackward: false,
+        active: false,
+    });
+
+    const {
+        settings: readerSettings,
+        updateSettings: updateReaderSettings,
+        resetSettings: resetReaderSettings,
+    } = useReaderViewSettings(pdfInfo?.id ?? id ?? null);
 
     // ── Extracted domain hooks ──
     const {
@@ -109,6 +170,7 @@ const PDFReader = () => {
                 closeIdeaModal();
                 closeChatModal();
                 closeRequestModal();
+                setReaderSettingsOpen(false);
             }
             return next;
         });
@@ -140,11 +202,53 @@ const PDFReader = () => {
         };
     }, [readerViewMode]);
 
+    useEffect(() => {
+        if (typeof globalThis.matchMedia !== 'function') {
+            return;
+        }
+
+        const mediaQuery = globalThis.matchMedia('(pointer: coarse)');
+        const sync = () => setIsCoarsePointer(mediaQuery.matches);
+        sync();
+
+        mediaQuery.addEventListener('change', sync);
+        return () => {
+            mediaQuery.removeEventListener('change', sync);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!readerViewMode) {
+            setPullIndicator({ active: false, direction: null, progress: 0 });
+            pullGestureRef.current = {
+                pointerId: null,
+                startX: 0,
+                startY: 0,
+                canForward: false,
+                canBackward: false,
+                active: false,
+            };
+        }
+    }, [readerViewMode]);
+
     if (metaLoading) {
         return <LoadingSpinner className="h-[calc(100vh-64px)]" size="lg" />;
     }
 
     const progressPercentage = (page / totalPages) * 100;
+    const canGoBackward = page > 1;
+    const canGoForward = page < totalPages;
+
+    const goByDirection = (direction: PageFlipDirection) => {
+        if (direction === 'forward') {
+            if (canGoForward) nextPage();
+            return;
+        }
+
+        if (canGoBackward) {
+            prevPage();
+        }
+    };
 
     // ── Chat icon shade palette ──
     const CHAT_ICON_SHADES = [
@@ -271,16 +375,32 @@ const PDFReader = () => {
         if (pageLoading) return <PageSkeleton page={page} />;
         if (sentences.length === 0) return <BlankPage page={page} />;
 
+        const chapterTitleClassName = readerViewMode
+            ? 'text-3xl sm:text-4xl font-bold tracking-tight mb-2'
+            : 'text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight mb-2';
+
+        const chapterDividerClassName = readerViewMode
+            ? 'mb-10 pb-6 border-b border-current/20'
+            : 'mb-10 pb-6 border-b border-slate-100';
+
+        const contentClassName = readerViewMode
+            ? 'space-y-6 font-serif'
+            : 'space-y-6 text-slate-800 leading-relaxed font-serif';
+
+        const sentencesWrapperClassName = readerViewMode
+            ? 'relative'
+            : 'text-lg relative';
+
         return (
-            <div className="space-y-6 text-slate-800 leading-relaxed font-serif">
+            <div className={contentClassName}>
                 {activeChapter?.startPage === page && (
-                    <div className="mb-10 pb-6 border-b border-slate-100">
-                        <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight mb-2">
+                    <div className={chapterDividerClassName}>
+                        <h1 className={chapterTitleClassName}>
                             {activeChapter.title}
                         </h1>
                     </div>
                 )}
-                <div className="text-lg relative">
+                <div className={sentencesWrapperClassName}>
                     {loadingIdeas && !readerViewMode && (
                         <div className="absolute top-0 right-0 -mt-6 -mr-4 bg-white/80 p-2 rounded-lg shadow-sm backdrop-blur-sm shadow-blue-100 border border-blue-100 z-10 flex items-center text-sm text-blue-600">
                             <LoadingSpinner className="w-4 h-4 mr-2" />
@@ -299,13 +419,186 @@ const PDFReader = () => {
         );
     };
 
+    const isHorizontalReaderScroll = readerSettings.scrollMode === 'horizontal';
+    let pullIndicatorPositionClassName = '';
+    if (pullIndicator.direction !== null) {
+        if (isHorizontalReaderScroll) {
+            pullIndicatorPositionClassName = pullIndicator.direction === 'forward'
+                ? 'right-6 top-1/2 -translate-y-1/2'
+                : 'left-6 top-1/2 -translate-y-1/2';
+        } else {
+            pullIndicatorPositionClassName = pullIndicator.direction === 'forward'
+                ? 'bottom-6 left-1/2 -translate-x-1/2'
+                : 'top-6 left-1/2 -translate-x-1/2';
+        }
+    }
+
+    const shouldShowEdgeClickZones = readerSettings.pageFlipEnabled && !isCoarsePointer;
+
+    const resolvePullDirection = (delta: number, canBackwardPull: boolean, canForwardPull: boolean): PageFlipDirection | null => {
+        if (delta > 0 && canBackwardPull) return 'backward';
+        if (delta < 0 && canForwardPull) return 'forward';
+        return null;
+    };
+
+    const handleReaderPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+        if (!readerSettings.pageFlipEnabled || event.pointerType !== 'touch') return;
+
+        const container = readerViewContainerRef.current;
+        if (!container) return;
+
+        const maxVerticalScroll = Math.max(0, container.scrollHeight - container.clientHeight);
+        const maxHorizontalScroll = Math.max(0, container.scrollWidth - container.clientWidth);
+        const canBackwardPull = isHorizontalReaderScroll
+            ? container.scrollLeft <= 2 && canGoBackward
+            : container.scrollTop <= 2 && canGoBackward;
+        const canForwardPull = isHorizontalReaderScroll
+            ? container.scrollLeft >= maxHorizontalScroll - 2 && canGoForward
+            : container.scrollTop >= maxVerticalScroll - 2 && canGoForward;
+
+        pullGestureRef.current = {
+            pointerId: event.pointerId,
+            startX: event.clientX,
+            startY: event.clientY,
+            canForward: canForwardPull,
+            canBackward: canBackwardPull,
+            active: canForwardPull || canBackwardPull,
+        };
+
+        if (canForwardPull || canBackwardPull) {
+            event.currentTarget.setPointerCapture(event.pointerId);
+        }
+    };
+
+    const handleReaderPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+        const pull = pullGestureRef.current;
+        if (!pull.active || pull.pointerId !== event.pointerId) return;
+
+        const delta = isHorizontalReaderScroll
+            ? event.clientX - pull.startX
+            : event.clientY - pull.startY;
+
+        const direction = resolvePullDirection(delta, pull.canBackward, pull.canForward);
+        if (!direction) {
+            setPullIndicator({ active: false, direction: null, progress: 0 });
+            return;
+        }
+
+        const progress = Math.min(1, Math.abs(delta) / PAGE_FLIP_PULL_THRESHOLD);
+        setPullIndicator({ active: true, direction, progress });
+        event.preventDefault();
+    };
+
+    const resetPullState = () => {
+        pullGestureRef.current = {
+            pointerId: null,
+            startX: 0,
+            startY: 0,
+            canForward: false,
+            canBackward: false,
+            active: false,
+        };
+        setPullIndicator({ active: false, direction: null, progress: 0 });
+    };
+
+    const handleReaderPointerEnd = (event: React.PointerEvent<HTMLDivElement>) => {
+        const pull = pullGestureRef.current;
+        if (!pull.active || pull.pointerId !== event.pointerId) return;
+
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+            event.currentTarget.releasePointerCapture(event.pointerId);
+        }
+
+        const shouldFlip = pullIndicator.active && pullIndicator.direction !== null && pullIndicator.progress >= 1;
+        const direction = pullIndicator.direction;
+        resetPullState();
+
+        if (shouldFlip && direction) {
+            goByDirection(direction);
+        }
+    };
+    const readerViewWrapperClassName = `fixed inset-0 z-50 ${isHorizontalReaderScroll ? 'overflow-x-auto overflow-y-hidden' : 'overflow-y-auto'} ${READER_THEME_CLASSES[readerSettings.theme].background}`;
+    const readerViewContentClassName = isHorizontalReaderScroll
+        ? `min-w-full py-8 px-6 sm:px-10 lg:py-12 ${READER_THEME_CLASSES[readerSettings.theme].text} font-serif`
+        : `${READER_TEXT_WIDTH_CLASSES[readerSettings.textWidth]} mx-auto py-8 px-6 sm:px-10 lg:py-12 ${READER_THEME_CLASSES[readerSettings.theme].text} font-serif`;
+
     return (
         <div className="flex flex-col h-[calc(100vh-64px)] overflow-hidden bg-slate-50 relative">
             {readerViewMode ? (
-                <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
-                    <div className="max-w-3xl mx-auto py-8 px-6 sm:px-10 lg:py-12">
+                <div
+                    className={readerViewWrapperClassName}
+                    ref={readerViewContainerRef}
+                    onPointerDown={handleReaderPointerDown}
+                    onPointerMove={handleReaderPointerMove}
+                    onPointerUp={handleReaderPointerEnd}
+                    onPointerCancel={handleReaderPointerEnd}
+                >
+                    <div
+                        className={readerViewContentClassName}
+                        style={{
+                            fontSize: `${readerSettings.fontSize}px`,
+                            lineHeight: readerSettings.lineHeight,
+                            height: isHorizontalReaderScroll ? 'calc(100vh - 4rem)' : undefined,
+                            columnWidth: isHorizontalReaderScroll ? 'min(42rem, calc(100vw - 6rem))' : undefined,
+                            columnGap: isHorizontalReaderScroll ? '3rem' : undefined,
+                            columnFill: isHorizontalReaderScroll ? 'auto' : undefined,
+                        }}
+                    >
                         {renderBookContent()}
                     </div>
+
+                    {shouldShowEdgeClickZones && isHorizontalReaderScroll && (
+                        <>
+                            <button
+                                type="button"
+                                className="fixed left-0 top-0 bottom-0 w-1/5 z-20"
+                                aria-label="Previous page"
+                                onClick={() => goByDirection('backward')}
+                                disabled={!canGoBackward}
+                            />
+                            <button
+                                type="button"
+                                className="fixed right-0 top-0 bottom-0 w-1/5 z-20"
+                                aria-label="Next page"
+                                onClick={() => goByDirection('forward')}
+                                disabled={!canGoForward}
+                            />
+                        </>
+                    )}
+
+                    {shouldShowEdgeClickZones && !isHorizontalReaderScroll && (
+                        <>
+                            <button
+                                type="button"
+                                className="fixed left-0 right-0 top-0 h-1/5 z-20"
+                                aria-label="Previous page"
+                                onClick={() => goByDirection('backward')}
+                                disabled={!canGoBackward}
+                            />
+                            <button
+                                type="button"
+                                className="fixed left-0 right-0 bottom-0 h-1/5 z-20"
+                                aria-label="Next page"
+                                onClick={() => goByDirection('forward')}
+                                disabled={!canGoForward}
+                            />
+                        </>
+                    )}
+
+                    {readerSettings.pageFlipEnabled && pullIndicator.active && pullIndicator.direction && (
+                        <div className={`fixed z-30 ${pullIndicatorPositionClassName}`}>
+                            <div
+                                className="w-14 h-14 rounded-full flex items-center justify-center shadow-lg border border-white/50"
+                                style={{
+                                    background: `conic-gradient(#2563eb ${pullIndicator.progress * 360}deg, rgba(148,163,184,0.25) 0deg)`,
+                                }}
+                            >
+                                <div className="w-10 h-10 rounded-full bg-white/95 text-[10px] font-semibold text-slate-700 flex items-center justify-center">
+                                    {Math.round(pullIndicator.progress * 100)}%
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             ) : (
                 <>
@@ -352,6 +645,7 @@ const PDFReader = () => {
                                 onToggleToolbar={() => setToolbarExpanded((t) => !t)}
                                 readerViewMode={readerViewMode}
                                 onToggleReaderView={handleToggleReaderView}
+                                onOpenReaderSettings={() => setReaderSettingsOpen(true)}
                                 onGoToPage={goToPage}
                                 onPrev={prevPage}
                                 onNext={nextPage}
@@ -491,6 +785,145 @@ const PDFReader = () => {
                                 )}
                                 <div className="mt-4 text-slate-800">
                                     {renderRequestStatus()}
+                                </div>
+                            </div>
+                        </Modal>
+
+                        <Modal
+                            isOpen={readerSettingsOpen}
+                            onClose={() => setReaderSettingsOpen(false)}
+                            title="Reader View Settings"
+                        >
+                            <div className="space-y-5">
+                                <div>
+                                    <label htmlFor="reader-font-size" className="block text-sm font-medium text-slate-700 mb-2">
+                                        Font size ({readerSettings.fontSize}px)
+                                    </label>
+                                    <input
+                                        id="reader-font-size"
+                                        type="range"
+                                        min={14}
+                                        max={34}
+                                        step={1}
+                                        value={readerSettings.fontSize}
+                                        onChange={(event) => updateReaderSettings({ fontSize: Number(event.target.value) })}
+                                        className="w-full"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label htmlFor="reader-line-height" className="block text-sm font-medium text-slate-700 mb-2">
+                                        Line spacing ({readerSettings.lineHeight.toFixed(1)})
+                                    </label>
+                                    <input
+                                        id="reader-line-height"
+                                        type="range"
+                                        min={1.2}
+                                        max={2.4}
+                                        step={0.1}
+                                        value={readerSettings.lineHeight}
+                                        onChange={(event) => updateReaderSettings({ lineHeight: Number(event.target.value) })}
+                                        className="w-full"
+                                    />
+                                </div>
+
+                                <div>
+                                    <span className="block text-sm font-medium text-slate-700 mb-2">Text width</span>
+                                    <div className="flex gap-2">
+                                        {[
+                                            { key: 'narrow', label: 'Narrow' },
+                                            { key: 'medium', label: 'Medium' },
+                                            { key: 'wide', label: 'Wide' },
+                                        ].map((option) => (
+                                            <button
+                                                key={option.key}
+                                                type="button"
+                                                onClick={() => updateReaderSettings({ textWidth: option.key as 'narrow' | 'medium' | 'wide' })}
+                                                className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${readerSettings.textWidth === option.key
+                                                    ? 'bg-blue-600 text-white border-blue-600'
+                                                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                                                    }`}
+                                            >
+                                                {option.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <span className="block text-sm font-medium text-slate-700 mb-2">Theme</span>
+                                    <div className="flex gap-2">
+                                        {[
+                                            { key: 'light', label: 'Light' },
+                                            { key: 'sepia', label: 'Sepia' },
+                                            { key: 'dark', label: 'Dark' },
+                                        ].map((option) => (
+                                            <button
+                                                key={option.key}
+                                                type="button"
+                                                onClick={() => updateReaderSettings({ theme: option.key as 'light' | 'sepia' | 'dark' })}
+                                                className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${readerSettings.theme === option.key
+                                                    ? 'bg-blue-600 text-white border-blue-600'
+                                                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                                                    }`}
+                                            >
+                                                {option.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <span className="block text-sm font-medium text-slate-700 mb-2">Scrolling</span>
+                                    <div className="flex gap-2">
+                                        {[
+                                            { key: 'vertical', label: 'Vertical' },
+                                            { key: 'horizontal', label: 'Horizontal' },
+                                        ].map((option) => (
+                                            <button
+                                                key={option.key}
+                                                type="button"
+                                                onClick={() => updateReaderSettings({ scrollMode: option.key as 'vertical' | 'horizontal' })}
+                                                className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${readerSettings.scrollMode === option.key
+                                                    ? 'bg-blue-600 text-white border-blue-600'
+                                                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                                                    }`}
+                                            >
+                                                {option.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <span className="block text-sm font-medium text-slate-700 mb-2">Page flipping</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => updateReaderSettings({ pageFlipEnabled: !readerSettings.pageFlipEnabled })}
+                                        className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${readerSettings.pageFlipEnabled
+                                            ? 'bg-blue-600 text-white border-blue-600'
+                                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                                            }`}
+                                    >
+                                        {readerSettings.pageFlipEnabled ? 'Enabled' : 'Disabled'}
+                                    </button>
+                                </div>
+
+                                <div className="pt-2 border-t border-slate-100 flex justify-between items-center">
+                                    <button
+                                        type="button"
+                                        onClick={resetReaderSettings}
+                                        className="text-sm text-slate-600 hover:text-slate-800"
+                                    >
+                                        Reset to defaults
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setReaderSettingsOpen(false)}
+                                        className="px-3 py-1.5 rounded-lg text-sm bg-slate-900 text-white hover:bg-slate-800 transition-colors"
+                                    >
+                                        Done
+                                    </button>
                                 </div>
                             </div>
                         </Modal>

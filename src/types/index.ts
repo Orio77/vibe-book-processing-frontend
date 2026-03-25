@@ -75,3 +75,18 @@ export interface PDFChatResponse {
     chatResponse: string;
     contextSentencesIds: number[];
 }
+
+export type ReaderViewTheme = 'light' | 'sepia' | 'dark';
+
+export type ReaderViewTextWidth = 'narrow' | 'medium' | 'wide';
+
+export type ReaderViewScrollMode = 'vertical' | 'horizontal';
+
+export interface ReaderViewSettings {
+    fontSize: number;
+    lineHeight: number;
+    textWidth: ReaderViewTextWidth;
+    theme: ReaderViewTheme;
+    scrollMode: ReaderViewScrollMode;
+    pageFlipEnabled: boolean;
+}
