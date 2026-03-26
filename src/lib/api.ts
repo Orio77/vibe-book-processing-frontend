@@ -34,6 +34,44 @@ function emptyOn204<T>(response: { status: number; data: T }): T | [] {
     return response.status === 204 ? [] : response.data;
 }
 
+export function getApiErrorMessage(error: unknown, fallbackMessage: string): string {
+    if (axios.isAxiosError(error)) {
+        const status = error.response?.status;
+        const payload = error.response?.data;
+
+        let serverMessage: string | null = null;
+
+        if (typeof payload === 'string' && payload.trim().length > 0) {
+            serverMessage = payload.trim();
+        } else if (payload && typeof payload === 'object') {
+            const candidate = (payload as { message?: unknown; error?: unknown; detail?: unknown });
+            if (typeof candidate.message === 'string' && candidate.message.trim().length > 0) {
+                serverMessage = candidate.message.trim();
+            } else if (typeof candidate.error === 'string' && candidate.error.trim().length > 0) {
+                serverMessage = candidate.error.trim();
+            } else if (typeof candidate.detail === 'string' && candidate.detail.trim().length > 0) {
+                serverMessage = candidate.detail.trim();
+            }
+        }
+
+        if (serverMessage) {
+            return status ? `${serverMessage} (HTTP ${status})` : serverMessage;
+        }
+
+        if (status) {
+            return `${fallbackMessage} (HTTP ${status})`;
+        }
+
+        return error.message || fallbackMessage;
+    }
+
+    if (error instanceof Error && error.message.trim().length > 0) {
+        return `${fallbackMessage}: ${error.message}`;
+    }
+
+    return fallbackMessage;
+}
+
 // ---------------------------------------------------------------------------
 // PDF CRUD
 // ---------------------------------------------------------------------------
@@ -301,6 +339,10 @@ export interface PDFChatRequest {
     context: { sentenceId: number; sentenceContent: string }[];
 }
 
+export type ChatDispatchResult =
+    | { mode: 'queued'; jobId: number }
+    | { mode: 'ready'; response: string };
+
 interface RawPDFChatResponse {
     chatResponseId?: number;
     id?: number;
@@ -344,14 +386,29 @@ function normalizeChatResponse(raw: RawPDFChatResponse): PDFChatResponse {
     };
 }
 
-export async function fetchChat(request: PDFChatRequest): Promise<string> {
-    const res = await apiClient.post<string>('/chat', request);
-    return res.data;
+export async function fetchChat(request: PDFChatRequest): Promise<ChatDispatchResult> {
+    const res = await apiClient.post<string | number>('/chat', request);
+
+    if (res.status === 202) {
+        const queuedJobId = coerceNumber(res.data);
+        if (queuedJobId === null) {
+            throw new TypeError('Chat queue job id is missing in backend payload');
+        }
+        return { mode: 'queued', jobId: queuedJobId };
+    }
+
+    if (typeof res.data !== 'string') {
+        throw new TypeError('Chat response text is missing in backend payload');
+    }
+
+    return { mode: 'ready', response: res.data };
 }
 
-export async function fetchExplanation(request: PDFChatRequest): Promise<string> {
-    const res = await apiClient.post<string>('/chat/explain', request);
-    return res.data;
+export async function fetchExplanation(request: PDFChatRequest): Promise<ChatDispatchResult> {
+    return fetchChat({
+        ...request,
+        query: '',
+    });
 }
 
 export async function fetchChatResponsesForChapter(chapterId: number): Promise<PDFChatResponse[]> {
