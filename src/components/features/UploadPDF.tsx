@@ -9,6 +9,25 @@ import { ErrorAlert } from '@/components/ui';
 import { Dropzone, ChapterRangeEditor } from './upload';
 import type { ChapterPageRange, ChapterRangeInput } from '@/types';
 
+const PENDING_UPLOAD_JOB_IDS_KEY = 'pendingUploadJobIds';
+
+function addPendingUploadJobId(jobId: number): void {
+    try {
+        const raw = globalThis.localStorage.getItem(PENDING_UPLOAD_JOB_IDS_KEY);
+        const parsed = raw ? JSON.parse(raw) : [];
+        const ids = Array.isArray(parsed)
+            ? parsed.map(Number).filter((item) => Number.isFinite(item))
+            : [];
+
+        if (!ids.includes(jobId)) {
+            ids.push(jobId);
+            globalThis.localStorage.setItem(PENDING_UPLOAD_JOB_IDS_KEY, JSON.stringify(ids));
+        }
+    } catch {
+        globalThis.localStorage.setItem(PENDING_UPLOAD_JOB_IDS_KEY, JSON.stringify([jobId]));
+    }
+}
+
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
     'pdfjs-dist/build/pdf.worker.mjs',
     import.meta.url,
@@ -163,8 +182,22 @@ const UploadPDF = () => {
                 : [{ startPage: 1, endPage: pageCount ?? 1 }];
 
         try {
-            const newId = await uploadPdf(file, ranges);
-            navigate(ROUTES.readById(newId));
+            const result = await uploadPdf(file, ranges);
+
+            if (result.mode === 'queued') {
+                addPendingUploadJobId(result.jobId);
+                navigate(ROUTES.HOME, {
+                    state: {
+                        uploadInfo: {
+                            mode: 'queued',
+                            jobId: result.jobId,
+                        },
+                    },
+                });
+                return;
+            }
+
+            navigate(ROUTES.readById(result.pdfId));
         } catch (err: unknown) {
             console.error(err);
             const axiosErr = err as { response?: { data?: { message?: string } } };

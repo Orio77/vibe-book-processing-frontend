@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, ArrowLeft, Menu, Sparkles, BookOpen, Lightbulb, MessageSquare, Settings2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, ArrowLeft, Menu, Sparkles, BookOpen, Lightbulb, MessageSquare, Settings2, ListTodo } from 'lucide-react';
 import { ROUTES } from '@/lib/constants';
 import type { Chapter } from '@/types';
 
@@ -23,6 +23,9 @@ interface ReaderToolbarProps {
     readonly onToggleIdeas: () => void;
     readonly showChat: boolean;
     readonly onToggleChat: () => void;
+    readonly requestCount: number;
+    readonly pendingRequestCount: number;
+    readonly onOpenRequestQueue: () => void;
 }
 
 interface ReaderViewToggleButtonProps {
@@ -32,6 +35,12 @@ interface ReaderViewToggleButtonProps {
 
 interface ReaderSettingsButtonProps {
     readonly onOpenReaderSettings: () => void;
+}
+
+interface RequestQueueButtonProps {
+    readonly requestCount: number;
+    readonly pendingRequestCount: number;
+    readonly onOpenRequestQueue: () => void;
 }
 
 function ReaderViewToggleButton({
@@ -67,6 +76,25 @@ function ReaderSettingsButton({ onOpenReaderSettings }: ReaderSettingsButtonProp
     );
 }
 
+function RequestQueueButton({ requestCount, pendingRequestCount, onOpenRequestQueue }: RequestQueueButtonProps) {
+    return (
+        <button
+            onClick={onOpenRequestQueue}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition-colors text-sm font-medium"
+            aria-label="Open request queue"
+            title="Open request queue"
+        >
+            <ListTodo size={14} />
+            Queue
+            {requestCount > 0 && (
+                <span className="ml-1 inline-flex items-center justify-center min-w-[1.35rem] h-5 px-1.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-700">
+                    {pendingRequestCount > 0 ? `${pendingRequestCount}/${requestCount}` : requestCount}
+                </span>
+            )}
+        </button>
+    );
+}
+
 interface SidebarToggleButtonProps {
     readonly sidebarOpen: boolean;
     readonly onToggleSidebar: () => void;
@@ -96,6 +124,9 @@ function CollapsedToolbar({
     readerViewMode,
     onToggleReaderView,
     onOpenReaderSettings,
+    requestCount,
+    pendingRequestCount,
+    onOpenRequestQueue,
 }: Pick<ReaderToolbarProps,
     | 'page'
     | 'totalPages'
@@ -106,6 +137,9 @@ function CollapsedToolbar({
     | 'readerViewMode'
     | 'onToggleReaderView'
     | 'onOpenReaderSettings'
+    | 'requestCount'
+    | 'pendingRequestCount'
+    | 'onOpenRequestQueue'
 >) {
     return (
         <div className="bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-2.5 flex items-center justify-between sticky top-0 z-10">
@@ -128,6 +162,12 @@ function CollapsedToolbar({
                 />
 
                 <ReaderSettingsButton onOpenReaderSettings={onOpenReaderSettings} />
+
+                <RequestQueueButton
+                    requestCount={requestCount}
+                    pendingRequestCount={pendingRequestCount}
+                    onOpenRequestQueue={onOpenRequestQueue}
+                />
 
                 <button
                     onClick={onToggleToolbar}
@@ -164,6 +204,9 @@ function ExpandedToolbar({
     onToggleIdeas,
     showChat,
     onToggleChat,
+    requestCount,
+    pendingRequestCount,
+    onOpenRequestQueue,
 }: ReaderToolbarProps) {
     return (
         <div className="bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-10">
@@ -273,6 +316,11 @@ function ExpandedToolbar({
                     onToggleReaderView={onToggleReaderView}
                 />
                 <ReaderSettingsButton onOpenReaderSettings={onOpenReaderSettings} />
+                <RequestQueueButton
+                    requestCount={requestCount}
+                    pendingRequestCount={pendingRequestCount}
+                    onOpenRequestQueue={onOpenRequestQueue}
+                />
                 <button
                     onClick={onToggleToolbar}
                     className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors"

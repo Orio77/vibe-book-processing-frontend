@@ -42,7 +42,6 @@ export function useReaderRequests(
         };
 
         setRequests(prev => [...prev, newRequest]);
-        setSelectedRequest(newRequest);
         exitMarkingMode();
 
         try {
@@ -76,7 +75,6 @@ export function useReaderRequests(
         };
 
         setRequests(prev => [...prev, newRequest]);
-        setSelectedRequest(newRequest);
         exitMarkingMode();
 
         try {
@@ -90,6 +88,16 @@ export function useReaderRequests(
         }
     }, [activeChapter, markedSentences, exitMarkingMode]);
 
+    const openRequest = useCallback((requestId: string) => {
+        setSelectedRequest((current) => {
+            if (current?.id === requestId) {
+                return current;
+            }
+
+            return requests.find((request) => request.id === requestId) ?? null;
+        });
+    }, [requests]);
+
     const closeRequestModal = useCallback(() => setSelectedRequest(null), []);
 
     return {
@@ -97,6 +105,7 @@ export function useReaderRequests(
         selectedRequest,
         handleRequestExplanation,
         handleSendQuery,
+        openRequest,
         closeRequestModal,
     } as const;
 }

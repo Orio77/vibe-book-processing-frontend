@@ -28,6 +28,17 @@ export function usePdfList() {
         load();
     }, [load, location]);
 
+    useEffect(() => {
+        const handleRefresh = () => {
+            void load();
+        };
+
+        globalThis.addEventListener('pdf-library-refresh', handleRefresh);
+        return () => {
+            globalThis.removeEventListener('pdf-library-refresh', handleRefresh);
+        };
+    }, [load]);
+
     const remove = useCallback(async (id: number) => {
         try {
             await deletePdf(id);

@@ -55,7 +55,7 @@ export async function deletePdf(id: number | string): Promise<void> {
 export async function uploadPdf(
     file: File,
     chapterPageRanges: ChapterPageRange[],
-): Promise<number> {
+): Promise<{ mode: 'queued'; jobId: number } | { mode: 'ready'; pdfId: number }> {
     const formData = new FormData();
     formData.append('file', file);
     formData.append(
@@ -65,6 +65,25 @@ export async function uploadPdf(
 
     const res = await apiClient.post<number>('/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
+    });
+
+    if (res.status === 202) {
+        return { mode: 'queued', jobId: res.data };
+    }
+
+    return { mode: 'ready', pdfId: res.data };
+}
+
+export interface QueueJob {
+    id: number;
+    status: 'PENDING' | 'COMPLETED' | 'CANCELLED' | 'FAILED' | 'BEING_MODIFIED';
+    resultId: number | null;
+    errorText?: string | null;
+}
+
+export async function fetchQueueJob(id: number): Promise<QueueJob> {
+    const res = await apiClient.get<QueueJob>(`/job/${id}`, {
+        baseURL: import.meta.env.VITE_API_BASE_URL?.replace(/\/api\/pdf\/?$/, ''),
     });
     return res.data;
 }

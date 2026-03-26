@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { BookOpen, FileText, Plus, Clock, Trash2 } from 'lucide-react';
 import { usePdfList } from '@/hooks';
 import { ROUTES } from '@/lib/constants';
@@ -6,6 +7,40 @@ import { LoadingSpinner, EmptyState } from '@/components/ui';
 
 const PDFList = () => {
     const { pdfs, loading, remove } = usePdfList();
+    const location = useLocation();
+    const navigate = useNavigate();
+
+    const uploadInfo =
+        (location.state as { uploadInfo?: { mode?: string; jobId?: number } } | null)
+            ?.uploadInfo;
+    const queuedJobId = uploadInfo?.mode === 'queued' ? uploadInfo.jobId : undefined;
+    const [showQueuedInfo, setShowQueuedInfo] = useState(queuedJobId != null);
+    const [queuedInfoLeaving, setQueuedInfoLeaving] = useState(false);
+
+    useEffect(() => {
+        if (queuedJobId == null) {
+            setShowQueuedInfo(false);
+            setQueuedInfoLeaving(false);
+            return;
+        }
+
+        setShowQueuedInfo(true);
+        setQueuedInfoLeaving(false);
+
+        const dismissTimer = globalThis.setTimeout(() => {
+            setQueuedInfoLeaving(true);
+        }, 2000);
+
+        const cleanupTimer = globalThis.setTimeout(() => {
+            setShowQueuedInfo(false);
+            navigate(location.pathname, { replace: true });
+        }, 2400);
+
+        return () => {
+            globalThis.clearTimeout(dismissTimer);
+            globalThis.clearTimeout(cleanupTimer);
+        };
+    }, [queuedJobId, navigate, location.pathname]);
 
     const handleDelete = async (id: number, e: React.MouseEvent) => {
         e.preventDefault();
@@ -21,6 +56,12 @@ const PDFList = () => {
 
     return (
         <div className="w-full">
+            {showQueuedInfo && queuedJobId != null && (
+                <div className={`overflow-hidden rounded-lg border border-amber-200 bg-amber-50 px-4 text-sm text-amber-800 transition-all duration-400 ease-out ${queuedInfoLeaving ? 'mb-0 max-h-0 py-0 opacity-0 -translate-y-1' : 'mb-6 max-h-24 py-3 opacity-100 translate-y-0'}`}>
+                    Upload accepted and queued (job #{queuedJobId}). Your book will appear once background processing finishes.
+                </div>
+            )}
+
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
                 <div>

@@ -1,9 +1,9 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react';
-import { usePdfReader, useReaderIdeas, useReaderChat, useReaderSummary, useSentenceMarking, useReaderRequests, useReaderViewSettings } from '@/hooks';
-import { LoadingSpinner, Modal } from '@/components/ui';
-import { ReaderSidebar, ReaderToolbar, PageSkeleton, BlankPage } from './reader';
+import { usePdfReader, useReaderIdeas, useReaderChat, useReaderSummary, useSentenceMarking, useReaderRequests, useReaderViewSettings, useToast } from '@/hooks';
+import { LoadingSpinner, Modal, Toast } from '@/components/ui';
+import { ReaderSidebar, ReaderToolbar, PageSkeleton, BlankPage, RequestQueuePanel } from './reader';
 import { SummaryViewer } from './SummaryViewer';
 import { IdeaArgumentsModal } from './IdeaArgumentsModal';
 import { ChatResponseModal } from './ChatResponseModal';
@@ -60,6 +60,7 @@ const PDFReader = () => {
     const [toolbarExpanded, setToolbarExpanded] = useState(false);
     const [readerViewMode, setReaderViewMode] = useState(false);
     const [readerSettingsOpen, setReaderSettingsOpen] = useState(false);
+    const [requestQueueOpen, setRequestQueueOpen] = useState(false);
     const [isCoarsePointer, setIsCoarsePointer] = useState(false);
     const [pullIndicator, setPullIndicator] = useState<PullIndicatorState>({
         active: false,
@@ -145,8 +146,12 @@ const PDFReader = () => {
         selectedRequest,
         handleRequestExplanation,
         handleSendQuery,
+        openRequest,
         closeRequestModal,
     } = useReaderRequests(activeChapter, markedSentences, exitMarkingMode);
+
+    const { toast, showToast, dismissToast } = useToast();
+    const completedRequestToastIdsRef = useRef<Set<string>>(new Set());
 
     // ── Derived handlers ──
 
@@ -170,11 +175,49 @@ const PDFReader = () => {
                 closeIdeaModal();
                 closeChatModal();
                 closeRequestModal();
+                setRequestQueueOpen(false);
                 setReaderSettingsOpen(false);
             }
             return next;
         });
     }, [closeSummary, exitMarkingMode, closeIdeaModal, closeChatModal, closeRequestModal]);
+
+    const pendingRequestCount = requests.filter((request) => request.status === 'pending').length;
+
+    const handleOpenRequestFromQueue = useCallback((requestId: string) => {
+        openRequest(requestId);
+        setRequestQueueOpen(false);
+    }, [openRequest]);
+
+    const handleSubmitQuery = useCallback(() => {
+        if (!queryText.trim()) return;
+        handleSendQuery(queryText);
+        setQueryText('');
+        setShowQueryBox(false);
+    }, [handleSendQuery, queryText, setQueryText, setShowQueryBox]);
+
+    useEffect(() => {
+        requests.forEach((request) => {
+            const isDone = request.status === 'success' || request.status === 'error';
+            if (!isDone) return;
+            if (completedRequestToastIdsRef.current.has(request.id)) return;
+
+            completedRequestToastIdsRef.current.add(request.id);
+
+            if (request.status === 'success') {
+                const message = request.type === 'explain'
+                    ? 'Explanation is ready.'
+                    : 'Chat response is ready.';
+                showToast(message, 'success');
+                return;
+            }
+
+            const message = request.type === 'explain'
+                ? 'Explanation request failed.'
+                : 'Chat request failed.';
+            showToast(message, 'error');
+        });
+    }, [requests, showToast]);
 
     useEffect(() => {
         if (!readerViewMode) return;
@@ -655,6 +698,9 @@ const PDFReader = () => {
                                 onToggleIdeas={toggleIdeas}
                                 showChat={showChat}
                                 onToggleChat={toggleChat}
+                                requestCount={requests.length}
+                                pendingRequestCount={pendingRequestCount}
+                                onOpenRequestQueue={() => setRequestQueueOpen(true)}
                             />
 
                             {summaryView ? (
@@ -737,7 +783,7 @@ const PDFReader = () => {
                                             autoFocus
                                         />
                                         <button
-                                            onClick={() => handleSendQuery(queryText)}
+                                            onClick={handleSubmitQuery}
                                             disabled={!queryText.trim()}
                                             className="p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:hover:bg-blue-600 transition-colors mt-auto"
                                             aria-label="Send"
@@ -746,9 +792,19 @@ const PDFReader = () => {
                                         </button>
                                     </div>
                                 )}
-                                <div className="hidden" aria-hidden="true" data-requests-count={requests.length}></div>
                             </div>
                         )}
+
+                        <Modal
+                            isOpen={requestQueueOpen}
+                            onClose={() => setRequestQueueOpen(false)}
+                            title="Request Queue"
+                        >
+                            <RequestQueuePanel
+                                requests={requests}
+                                onSelectRequest={handleOpenRequestFromQueue}
+                            />
+                        </Modal>
 
                         <IdeaArgumentsModal
                             isOpen={selectedIdeas !== null}
@@ -788,6 +844,15 @@ const PDFReader = () => {
                                 </div>
                             </div>
                         </Modal>
+
+                        {toast && (
+                            <Toast
+                                message={toast.message}
+                                type={toast.type}
+                                onClose={dismissToast}
+                                variant={readerViewMode ? 'minimal' : 'default'}
+                            />
+                        )}
 
                         <Modal
                             isOpen={readerSettingsOpen}
