@@ -149,6 +149,8 @@ const PDFReader = () => {
         handleSendQuery,
         registerSummaryQueueJob,
         resolveSummaryQueueJob,
+        registerIdeaExplanationQueueJob,
+        resolveIdeaExplanationQueueJob,
         openRequest,
         closeRequestModal,
     } = useReaderRequests(activeChapter, markedSentences, exitMarkingMode);
@@ -187,20 +189,23 @@ const PDFReader = () => {
 
     const pendingRequestCount = requests.filter((request) => request.status === 'pending').length;
 
-    const getRequestSuccessMessage = useCallback((requestType: 'query' | 'explain' | 'summary') => {
+    const getRequestSuccessMessage = useCallback((requestType: 'query' | 'explain' | 'summary' | 'idea-explain') => {
         if (requestType === 'summary') return 'Chapter summary is ready.';
+        if (requestType === 'idea-explain') return 'Idea explanation is ready.';
         if (requestType === 'explain') return 'Explanation is ready.';
         return 'Chat response is ready.';
     }, []);
 
-    const getRequestErrorMessage = useCallback((requestType: 'query' | 'explain' | 'summary') => {
+    const getRequestErrorMessage = useCallback((requestType: 'query' | 'explain' | 'summary' | 'idea-explain') => {
         if (requestType === 'summary') return 'Chapter summary request failed.';
+        if (requestType === 'idea-explain') return 'Idea explanation request failed.';
         if (requestType === 'explain') return 'Explanation request failed.';
         return 'Chat request failed.';
     }, []);
 
     const getSelectedRequestTitle = useCallback(() => {
         if (selectedRequest?.type === 'summary') return 'Chapter Summary';
+        if (selectedRequest?.type === 'idea-explain') return 'Idea Explanation';
         if (selectedRequest?.type === 'explain') return 'Explanation';
         return 'Chat Response';
     }, [selectedRequest?.type]);
@@ -224,6 +229,14 @@ const PDFReader = () => {
     const handleResolveSummaryQueueJob = useCallback((jobId: number, status: 'success' | 'error', response: string) => {
         resolveSummaryQueueJob(jobId, status, response);
     }, [resolveSummaryQueueJob]);
+
+    const handleQueueIdeaExplanation = useCallback((chapterId: number, ideaTitle: string, jobId: number) => {
+        registerIdeaExplanationQueueJob(chapterId, ideaTitle, jobId);
+    }, [registerIdeaExplanationQueueJob]);
+
+    const handleResolveIdeaExplanationQueueJob = useCallback((jobId: number, status: 'success' | 'error', response: string) => {
+        resolveIdeaExplanationQueueJob(jobId, status, response);
+    }, [resolveIdeaExplanationQueueJob]);
 
     useEffect(() => {
         requests.forEach((request) => {
@@ -838,6 +851,9 @@ const PDFReader = () => {
                             isOpen={selectedIdeas !== null}
                             onClose={closeIdeaModal}
                             ideas={selectedIdeas || []}
+                            chapterId={activeChapter?.id}
+                            onQueueIdeaExplanation={handleQueueIdeaExplanation}
+                            onResolveIdeaExplanationQueueJob={handleResolveIdeaExplanationQueueJob}
                         />
 
                         <ChatResponseModal

@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Modal, LoadingSpinner } from '@/components/ui';
-import { createIdeaExplanation, fetchIdeaArguments, fetchIdeaExplanations } from '@/lib/api';
+import { createIdeaExplanation, fetchIdeaArguments, fetchIdeaExplanations, fetchQueueJob } from '@/lib/api';
+import { useJobCompletionSubscription } from '@/hooks';
 import type { IdeaWithSentences, IdeaArgumentDTO, IdeaExplanationDTO } from '@/types';
 
 const EXPLANATION_PREVIEW_LENGTH = 180;
@@ -9,15 +10,27 @@ interface IdeaArgumentsModalProps {
     readonly isOpen: boolean;
     readonly onClose: () => void;
     readonly ideas: IdeaWithSentences[];
+    readonly chapterId?: number;
+    readonly onQueueIdeaExplanation?: (chapterId: number, ideaTitle: string, jobId: number) => void;
+    readonly onResolveIdeaExplanationQueueJob?: (jobId: number, status: 'success' | 'error', response: string) => void;
 }
 
-export function IdeaArgumentsModal({ isOpen, onClose, ideas }: IdeaArgumentsModalProps) {
+export function IdeaArgumentsModal({
+    isOpen,
+    onClose,
+    ideas,
+    chapterId,
+    onQueueIdeaExplanation,
+    onResolveIdeaExplanationQueueJob,
+}: IdeaArgumentsModalProps) {
     const [argumentsMap, setArgumentsMap] = useState<Record<number, IdeaArgumentDTO[]>>({});
     const [explanationsMap, setExplanationsMap] = useState<Record<number, IdeaExplanationDTO[]>>({});
     const [generatingExplanationByIdeaId, setGeneratingExplanationByIdeaId] = useState<Record<number, boolean>>({});
     const [explanationErrorByIdeaId, setExplanationErrorByIdeaId] = useState<Record<number, string | null>>({});
     const [expandedExplanationIds, setExpandedExplanationIds] = useState<Record<number, boolean>>({});
     const [loading, setLoading] = useState(false);
+    const pendingExplanationJobsRef = useRef<Map<number, number>>(new Map());
+    const processingExplanationJobsRef = useRef<Set<number>>(new Set());
 
     useEffect(() => {
         if (!isOpen || ideas.length === 0) return;
@@ -86,10 +99,18 @@ export function IdeaArgumentsModal({ isOpen, onClose, ideas }: IdeaArgumentsModa
         setExplanationErrorByIdeaId((prev) => ({ ...prev, [ideaId]: null }));
 
         try {
-            const explanation = await createIdeaExplanation(ideaId, ideaTitle);
+            const result = await createIdeaExplanation(ideaId, ideaTitle);
+            if (result.mode === 'queued') {
+                pendingExplanationJobsRef.current.set(result.jobId, ideaId);
+                if (chapterId != null) {
+                    onQueueIdeaExplanation?.(chapterId, ideaTitle, result.jobId);
+                }
+                return;
+            }
+
             setExplanationsMap((prev) => {
                 const current = prev[ideaId] || [];
-                return { ...prev, [ideaId]: [explanation, ...current] };
+                return { ...prev, [ideaId]: [result.explanation, ...current] };
             });
         } catch (error) {
             console.error('Failed to generate explanation', error);
@@ -101,6 +122,70 @@ export function IdeaArgumentsModal({ isOpen, onClose, ideas }: IdeaArgumentsModa
             setGeneratingExplanationByIdeaId((prev) => ({ ...prev, [ideaId]: false }));
         }
     };
+
+    const handleIdeaExplanationCompletion = useCallback(async (jobId: number) => {
+        const ideaId = pendingExplanationJobsRef.current.get(jobId);
+        if (ideaId == null || processingExplanationJobsRef.current.has(jobId)) {
+            return;
+        }
+
+        processingExplanationJobsRef.current.add(jobId);
+
+        try {
+            const queueJob = await fetchQueueJob(jobId);
+
+            if (queueJob.status !== 'COMPLETED') {
+                setExplanationErrorByIdeaId((prev) => ({
+                    ...prev,
+                    [ideaId]: queueJob.errorText?.trim() || 'Could not generate explanation right now. Please try again.',
+                }));
+                onResolveIdeaExplanationQueueJob?.(
+                    jobId,
+                    'error',
+                    queueJob.errorText?.trim() || 'Could not generate explanation right now. Please try again.',
+                );
+                return;
+            }
+
+            const refreshed = await fetchIdeaExplanations(ideaId);
+            const resultId = queueJob.resultId ?? null;
+            const resolved = resultId == null
+                ? refreshed[0]
+                : refreshed.find((item) => item.id === resultId) ?? refreshed[0];
+
+            if (!resolved) {
+                setExplanationErrorByIdeaId((prev) => ({
+                    ...prev,
+                    [ideaId]: 'Explanation finished but no content was returned.',
+                }));
+                onResolveIdeaExplanationQueueJob?.(jobId, 'error', 'Explanation finished but no content was returned.');
+                return;
+            }
+
+            setExplanationsMap((prev) => {
+                const current = prev[ideaId] || [];
+                const alreadyPresent = current.some((item) => item.id === resolved.id);
+                if (alreadyPresent) {
+                    return prev;
+                }
+                return { ...prev, [ideaId]: [resolved, ...current] };
+            });
+            setExplanationErrorByIdeaId((prev) => ({ ...prev, [ideaId]: null }));
+            onResolveIdeaExplanationQueueJob?.(jobId, 'success', resolved.text ?? 'Idea explanation generated.');
+        } catch (error) {
+            console.error('Failed to resolve queued explanation', error);
+            setExplanationErrorByIdeaId((prev) => ({
+                ...prev,
+                [ideaId]: 'Could not resolve explanation completion. Please refresh and try again.',
+            }));
+            onResolveIdeaExplanationQueueJob?.(jobId, 'error', 'Could not resolve explanation completion. Please refresh and try again.');
+        } finally {
+            pendingExplanationJobsRef.current.delete(jobId);
+            processingExplanationJobsRef.current.delete(jobId);
+        }
+    }, [chapterId, onQueueIdeaExplanation, onResolveIdeaExplanationQueueJob]);
+
+    useJobCompletionSubscription(handleIdeaExplanationCompletion);
 
     const toggleExplanationExpanded = (explanationId: number) => {
         setExpandedExplanationIds((prev) => ({

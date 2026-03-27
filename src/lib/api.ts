@@ -297,13 +297,26 @@ function normalizeIdeaExplanation(raw: RawIdeaExplanation, fallbackIdeaId?: numb
     };
 }
 
-export async function createIdeaExplanation(ideaId: number, ideaContent: string): Promise<IdeaExplanationDTO> {
-    const res = await apiClient.post<RawIdeaExplanation>(
+export type IdeaExplanationDispatchResult =
+    | { mode: 'queued'; jobId: number }
+    | { mode: 'ready'; explanation: IdeaExplanationDTO };
+
+export async function createIdeaExplanation(ideaId: number, ideaContent: string): Promise<IdeaExplanationDispatchResult> {
+    const res = await apiClient.post<RawIdeaExplanation | string | number>(
         `${PROCESS_URL}/idea/${ideaId}/explanation`,
         ideaContent,
         { headers: { 'Content-Type': 'text/plain' } },
     );
-    return normalizeIdeaExplanation(res.data, ideaId);
+
+    if (res.status === 202) {
+        const queuedJobId = coerceNumber(res.data);
+        if (queuedJobId === null) {
+            throw new TypeError('Idea explanation queue job id is missing in backend payload');
+        }
+        return { mode: 'queued', jobId: queuedJobId };
+    }
+
+    return { mode: 'ready', explanation: normalizeIdeaExplanation(res.data as RawIdeaExplanation, ideaId) };
 }
 
 export async function fetchIdeaExplanations(ideaId: number): Promise<IdeaExplanationDTO[]> {

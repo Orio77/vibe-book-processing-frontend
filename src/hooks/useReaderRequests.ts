@@ -13,7 +13,7 @@ export interface ReaderRequest {
     id: string;
     chapterId: number;
     jobId?: number;
-    type: 'explain' | 'query' | 'summary';
+    type: 'explain' | 'query' | 'summary' | 'idea-explain';
     query?: string;
     sentences: Sentence[];
     timestamp: Date;
@@ -168,9 +168,43 @@ export function useReaderRequests(
         [],
     );
 
+    const registerIdeaExplanationQueueJob = useCallback((chapterId: number, ideaTitle: string, jobId: number) => {
+        const requestId = crypto.randomUUID();
+        const ideaRequest: ReaderRequest = {
+            id: requestId,
+            chapterId,
+            jobId,
+            type: 'idea-explain',
+            query: `Generate idea explanation: ${ideaTitle}`,
+            sentences: [],
+            timestamp: new Date(),
+            status: 'pending',
+        };
+
+        setRequests(prev => [...prev, ideaRequest]);
+        return requestId;
+    }, []);
+
+    const resolveIdeaExplanationQueueJob = useCallback(
+        (jobId: number, status: 'success' | 'error', response: string) => {
+            const update = { status, response };
+            setRequests(prev => prev.map((request) => (
+                request.type === 'idea-explain' && request.jobId === jobId
+                    ? { ...request, ...update }
+                    : request
+            )));
+            setSelectedRequest(prev => (
+                prev?.type === 'idea-explain' && prev.jobId === jobId
+                    ? { ...prev, ...update }
+                    : prev
+            ));
+        },
+        [],
+    );
+
     const handleJobCompleted = useCallback(async (jobId: number) => {
         const matchingRequest = requestsRef.current.find(
-            (request) => request.type !== 'summary' && request.jobId === jobId && request.status === 'pending',
+            (request) => request.type !== 'summary' && request.type !== 'idea-explain' && request.jobId === jobId && request.status === 'pending',
         );
         if (!matchingRequest || processingJobIdsRef.current.has(jobId)) {
             return;
@@ -213,6 +247,8 @@ export function useReaderRequests(
         handleSendQuery,
         registerSummaryQueueJob,
         resolveSummaryQueueJob,
+        registerIdeaExplanationQueueJob,
+        resolveIdeaExplanationQueueJob,
         openRequest,
         closeRequestModal,
     } as const;
