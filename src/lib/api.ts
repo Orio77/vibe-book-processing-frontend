@@ -155,15 +155,24 @@ export async function fetchPageSentences(
 
 const PROCESS_URL = 'process';
 
+export type ChapterSummaryDispatchResult =
+    | { mode: 'queued'; jobId: number }
+    | { mode: 'ready'; summaryId: number };
+
 export async function createChapterSummary(
     chapterId: number,
-): Promise<number> {
+): Promise<ChapterSummaryDispatchResult> {
     const res = await apiClient.post<number>(
         `${PROCESS_URL}/chapter/summary`,
         null,
         { params: { chapterId } },
     );
-    return res.data;
+
+    if (res.status === 202) {
+        return { mode: 'queued', jobId: res.data };
+    }
+
+    return { mode: 'ready', summaryId: res.data };
 }
 
 export async function getChapterSummary(id: number): Promise<string> {

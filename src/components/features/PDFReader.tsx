@@ -121,6 +121,7 @@ const PDFReader = () => {
         summaries,
         loadingSummary,
         openSummaryView,
+        syncSummaries,
         closeSummary,
         handleDeleteSummary,
     } = useReaderSummary(activeChapter);
@@ -146,6 +147,8 @@ const PDFReader = () => {
         selectedRequest,
         handleRequestExplanation,
         handleSendQuery,
+        registerSummaryQueueJob,
+        resolveSummaryQueueJob,
         openRequest,
         closeRequestModal,
     } = useReaderRequests(activeChapter, markedSentences, exitMarkingMode);
@@ -184,6 +187,24 @@ const PDFReader = () => {
 
     const pendingRequestCount = requests.filter((request) => request.status === 'pending').length;
 
+    const getRequestSuccessMessage = useCallback((requestType: 'query' | 'explain' | 'summary') => {
+        if (requestType === 'summary') return 'Chapter summary is ready.';
+        if (requestType === 'explain') return 'Explanation is ready.';
+        return 'Chat response is ready.';
+    }, []);
+
+    const getRequestErrorMessage = useCallback((requestType: 'query' | 'explain' | 'summary') => {
+        if (requestType === 'summary') return 'Chapter summary request failed.';
+        if (requestType === 'explain') return 'Explanation request failed.';
+        return 'Chat request failed.';
+    }, []);
+
+    const getSelectedRequestTitle = useCallback(() => {
+        if (selectedRequest?.type === 'summary') return 'Chapter Summary';
+        if (selectedRequest?.type === 'explain') return 'Explanation';
+        return 'Chat Response';
+    }, [selectedRequest?.type]);
+
     const handleOpenRequestFromQueue = useCallback((requestId: string) => {
         openRequest(requestId);
         setRequestQueueOpen(false);
@@ -196,6 +217,14 @@ const PDFReader = () => {
         setShowQueryBox(false);
     }, [handleSendQuery, queryText, setQueryText, setShowQueryBox]);
 
+    const handleQueueSummary = useCallback((chapterId: number, jobId: number) => {
+        registerSummaryQueueJob(chapterId, jobId);
+    }, [registerSummaryQueueJob]);
+
+    const handleResolveSummaryQueueJob = useCallback((jobId: number, status: 'success' | 'error', response: string) => {
+        resolveSummaryQueueJob(jobId, status, response);
+    }, [resolveSummaryQueueJob]);
+
     useEffect(() => {
         requests.forEach((request) => {
             const isDone = request.status === 'success' || request.status === 'error';
@@ -203,21 +232,18 @@ const PDFReader = () => {
             if (completedRequestToastIdsRef.current.has(request.id)) return;
 
             completedRequestToastIdsRef.current.add(request.id);
+            if (readerViewMode) return;
 
             if (request.status === 'success') {
-                const message = request.type === 'explain'
-                    ? 'Explanation is ready.'
-                    : 'Chat response is ready.';
+                const message = getRequestSuccessMessage(request.type);
                 showToast(message, 'success');
                 return;
             }
 
-            const message = request.type === 'explain'
-                ? 'Explanation request failed.'
-                : 'Chat request failed.';
+            const message = getRequestErrorMessage(request.type);
             showToast(message, 'error');
         });
-    }, [requests, showToast]);
+    }, [getRequestErrorMessage, getRequestSuccessMessage, readerViewMode, requests, showToast]);
 
     useEffect(() => {
         if (!readerViewMode) return;
@@ -673,7 +699,9 @@ const PDFReader = () => {
                             sidebarOpen={sidebarOpen}
                             onClose={() => setSidebarOpen(false)}
                             onJumpToChapter={handleJumpToChapter}
-                            onViewSummary={openSummaryView}
+                            onSummaryUpdated={syncSummaries}
+                            onQueueSummary={handleQueueSummary}
+                            onResolveSummaryQueueJob={handleResolveSummaryQueueJob}
                         />
 
                         {/* Main Content Area */}
@@ -823,17 +851,23 @@ const PDFReader = () => {
                         <Modal
                             isOpen={selectedRequest !== null}
                             onClose={closeRequestModal}
-                            title={selectedRequest?.type === 'explain' ? 'Explanation' : 'Chat Response'}
+                            title={getSelectedRequestTitle()}
                         >
                             <div className="space-y-4">
-                                <div className="bg-slate-50 p-4 rounded-lg text-sm text-slate-600">
-                                    <strong>Reference context:</strong>
-                                    <ul className="list-disc pl-5 mt-2 space-y-1">
-                                        {selectedRequest?.sentences.map(s => (
-                                            <li key={s.id}>{s.content}</li>
-                                        ))}
-                                    </ul>
-                                </div>
+                                {selectedRequest?.sentences.length ? (
+                                    <div className="bg-slate-50 p-4 rounded-lg text-sm text-slate-600">
+                                        <strong>Reference context:</strong>
+                                        <ul className="list-disc pl-5 mt-2 space-y-1">
+                                            {selectedRequest?.sentences.map(s => (
+                                                <li key={s.id}>{s.content}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                ) : (
+                                    <div className="bg-slate-50 p-4 rounded-lg text-sm text-slate-600">
+                                        <strong>Request:</strong> {selectedRequest?.query ?? 'Queued summary generation'}
+                                    </div>
+                                )}
                                 {selectedRequest?.query && (
                                     <div className="font-medium text-slate-800">
                                         <strong>Q:</strong> {selectedRequest.query}

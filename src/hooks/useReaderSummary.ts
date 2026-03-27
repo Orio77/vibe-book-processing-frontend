@@ -35,6 +35,10 @@ export function useReaderSummary(activeChapter: Chapter | undefined) {
 
     const closeSummary = useCallback(() => setSummaryView(false), []);
 
+    const syncSummaries = useCallback((incoming: ChapterSummary[]) => {
+        setSummaries(incoming);
+    }, []);
+
     const handleDeleteSummary = useCallback(async (summaryId: number) => {
         await deleteChapterSummary(summaryId);
         setSummaries(prev => {
@@ -49,6 +53,7 @@ export function useReaderSummary(activeChapter: Chapter | undefined) {
         summaries,
         loadingSummary,
         openSummaryView,
+        syncSummaries,
         closeSummary,
         handleDeleteSummary,
     } as const;

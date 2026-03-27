@@ -13,7 +13,7 @@ export interface ReaderRequest {
     id: string;
     chapterId: number;
     jobId?: number;
-    type: 'explain' | 'query';
+    type: 'explain' | 'query' | 'summary';
     query?: string;
     sentences: Sentence[];
     timestamp: Date;
@@ -134,8 +134,44 @@ export function useReaderRequests(
 
     const closeRequestModal = useCallback(() => setSelectedRequest(null), []);
 
+    const registerSummaryQueueJob = useCallback((chapterId: number, jobId: number) => {
+        const requestId = crypto.randomUUID();
+        const summaryRequest: ReaderRequest = {
+            id: requestId,
+            chapterId,
+            jobId,
+            type: 'summary',
+            query: 'Generate chapter summary',
+            sentences: [],
+            timestamp: new Date(),
+            status: 'pending',
+        };
+
+        setRequests(prev => [...prev, summaryRequest]);
+        return requestId;
+    }, []);
+
+    const resolveSummaryQueueJob = useCallback(
+        (jobId: number, status: 'success' | 'error', response: string) => {
+            const update = { status, response };
+            setRequests(prev => prev.map((request) => (
+                request.type === 'summary' && request.jobId === jobId
+                    ? { ...request, ...update }
+                    : request
+            )));
+            setSelectedRequest(prev => (
+                prev?.type === 'summary' && prev.jobId === jobId
+                    ? { ...prev, ...update }
+                    : prev
+            ));
+        },
+        [],
+    );
+
     const handleJobCompleted = useCallback(async (jobId: number) => {
-        const matchingRequest = requestsRef.current.find((request) => request.jobId === jobId && request.status === 'pending');
+        const matchingRequest = requestsRef.current.find(
+            (request) => request.type !== 'summary' && request.jobId === jobId && request.status === 'pending',
+        );
         if (!matchingRequest || processingJobIdsRef.current.has(jobId)) {
             return;
         }
@@ -175,6 +211,8 @@ export function useReaderRequests(
         selectedRequest,
         handleRequestExplanation,
         handleSendQuery,
+        registerSummaryQueueJob,
+        resolveSummaryQueueJob,
         openRequest,
         closeRequestModal,
     } as const;

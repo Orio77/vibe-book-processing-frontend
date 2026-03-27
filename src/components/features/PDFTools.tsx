@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import {
     Sparkles,
     BookOpen,
@@ -9,12 +9,14 @@ import {
 } from 'lucide-react';
 import {
     createChapterSummary,
+    fetchQueueJob,
     getSummaryByChapterId,
     createBookSummary,
     markKeyIdeas,
+    getApiErrorMessage,
 } from '@/lib/api';
 import type { ChapterSummary } from '@/types';
-import { useToast } from '@/hooks';
+import { useJobCompletionSubscription, useToast } from '@/hooks';
 import { Toast } from '@/components/ui';
 import type { LucideIcon } from 'lucide-react';
 
@@ -22,12 +24,23 @@ interface PDFToolsProps {
     pdfId: number;
     chapterId: number | null;
     chapterCount: number;
-    onViewSummary: (summaries: ChapterSummary[]) => void;
+    onSummaryUpdated: (summaries: ChapterSummary[]) => void;
+    onQueueSummary?: (chapterId: number, jobId: number) => void;
+    onResolveSummaryQueueJob?: (jobId: number, status: 'success' | 'error', response: string) => void;
 }
 
-const PDFTools: React.FC<PDFToolsProps> = ({ pdfId, chapterId, chapterCount, onViewSummary }) => {
+const PDFTools: React.FC<PDFToolsProps> = ({
+    pdfId,
+    chapterId,
+    chapterCount,
+    onSummaryUpdated,
+    onQueueSummary,
+    onResolveSummaryQueueJob,
+}) => {
     const [loadingAction, setLoadingAction] = useState<string | null>(null);
     const { toast, showToast, dismissToast } = useToast();
+    const pendingSummaryJobsRef = useRef<Map<number, number>>(new Map());
+    const processingSummaryJobRef = useRef<Set<number>>(new Set());
 
     const runAction = useCallback(
         async (id: string, action: () => Promise<void>, successMsg: string) => {
@@ -49,17 +62,58 @@ const PDFTools: React.FC<PDFToolsProps> = ({ pdfId, chapterId, chapterCount, onV
         if (!chapterId) return;
         setLoadingAction('chapter-summary');
         try {
-            await createChapterSummary(chapterId);
+            const result = await createChapterSummary(chapterId);
+
+            if (result.mode === 'queued') {
+                pendingSummaryJobsRef.current.set(result.jobId, chapterId);
+                onQueueSummary?.(chapterId, result.jobId);
+                showToast('Chapter summary request queued.', 'success');
+                return;
+            }
+
             const allSummaries = await getSummaryByChapterId(chapterId);
-            onViewSummary(allSummaries);
+            onSummaryUpdated(allSummaries);
             showToast('Chapter summary created!', 'success');
         } catch (err) {
             console.error(err);
-            showToast('Error: chapter summary failed.', 'error');
+            const errorMessage = getApiErrorMessage(err, 'Error: chapter summary failed.');
+            showToast(errorMessage, 'error');
         } finally {
             setLoadingAction(null);
         }
     };
+
+    const handleChapterSummaryCompletion = useCallback(async (jobId: number) => {
+        const chapterForJob = pendingSummaryJobsRef.current.get(jobId);
+        if (chapterForJob == null || processingSummaryJobRef.current.has(jobId)) {
+            return;
+        }
+
+        processingSummaryJobRef.current.add(jobId);
+
+        try {
+            const job = await fetchQueueJob(jobId);
+
+            if (job.status !== 'COMPLETED') {
+                const errorMessage = job.errorText?.trim() || 'Chapter summary generation failed.';
+                onResolveSummaryQueueJob?.(jobId, 'error', errorMessage);
+                showToast(errorMessage, 'error');
+                return;
+            }
+
+            const allSummaries = await getSummaryByChapterId(chapterForJob);
+            onSummaryUpdated(allSummaries);
+            onResolveSummaryQueueJob?.(jobId, 'success', allSummaries.at(-1)?.summaryText ?? 'Chapter summary created.');
+        } catch (error) {
+            const errorMessage = getApiErrorMessage(error, 'Failed to resolve chapter summary completion.');
+            onResolveSummaryQueueJob?.(jobId, 'error', errorMessage);
+        } finally {
+            pendingSummaryJobsRef.current.delete(jobId);
+            processingSummaryJobRef.current.delete(jobId);
+        }
+    }, [onResolveSummaryQueueJob, onSummaryUpdated]);
+
+    useJobCompletionSubscription(handleChapterSummaryCompletion);
 
     const handleBookSummary = () =>
         runAction(

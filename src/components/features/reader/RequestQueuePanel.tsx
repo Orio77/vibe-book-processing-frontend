@@ -1,4 +1,4 @@
-import { Clock3, Loader2, MessageSquareText, Sparkles, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Clock3, Loader2, MessageSquareText, Sparkles, ScrollText, CheckCircle2, AlertCircle } from 'lucide-react';
 import type { ReaderRequest } from '@/hooks/useReaderRequests';
 
 interface RequestQueuePanelProps {
@@ -23,7 +23,17 @@ function RequestTypeIcon({ type }: { readonly type: ReaderRequest['type'] }) {
         return <MessageSquareText className="w-4 h-4 text-teal-600" />;
     }
 
+    if (type === 'summary') {
+        return <ScrollText className="w-4 h-4 text-violet-600" />;
+    }
+
     return <Sparkles className="w-4 h-4 text-blue-600" />;
+}
+
+function getRequestTitle(request: ReaderRequest): string {
+    if (request.type === 'query') return request.query ?? 'Chat request';
+    if (request.type === 'summary') return 'Chapter summary request';
+    return 'Explanation request';
 }
 
 function StatusIcon({ status }: { readonly status: ReaderRequest['status'] }) {
@@ -70,7 +80,7 @@ export function RequestQueuePanel({ requests, onSelectRequest }: RequestQueuePan
                         <div className="flex items-center gap-2 min-w-0">
                             <RequestTypeIcon type={request.type} />
                             <p className="text-sm font-semibold text-slate-800 truncate">
-                                {request.type === 'query' ? request.query : 'Explanation request'}
+                                {getRequestTitle(request)}
                             </p>
                         </div>
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs font-medium ${getStatusBadgeClass(request.status)}`}>

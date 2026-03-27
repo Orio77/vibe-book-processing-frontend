@@ -9,7 +9,9 @@ interface ReaderSidebarProps {
     readonly sidebarOpen: boolean;
     readonly onClose: () => void;
     readonly onJumpToChapter: (ch: Chapter) => void;
-    readonly onViewSummary: (summaries: ChapterSummary[]) => void;
+    readonly onSummaryUpdated: (summaries: ChapterSummary[]) => void;
+    readonly onQueueSummary?: (chapterId: number, jobId: number) => void;
+    readonly onResolveSummaryQueueJob?: (jobId: number, status: 'success' | 'error', response: string) => void;
 }
 
 export function ReaderSidebar({
@@ -19,7 +21,9 @@ export function ReaderSidebar({
     sidebarOpen,
     onClose,
     onJumpToChapter,
-    onViewSummary,
+    onSummaryUpdated,
+    onQueueSummary,
+    onResolveSummaryQueueJob,
 }: ReaderSidebarProps) {
     return (
         <div
@@ -55,7 +59,9 @@ export function ReaderSidebar({
                                     pdfId={pdfInfo.id}
                                     chapterId={activeChapter?.id ?? null}
                                     chapterCount={chapters.length}
-                                    onViewSummary={onViewSummary}
+                                    onSummaryUpdated={onSummaryUpdated}
+                                    onQueueSummary={onQueueSummary}
+                                    onResolveSummaryQueueJob={onResolveSummaryQueueJob}
                                 />
                             </div>
                         )}
