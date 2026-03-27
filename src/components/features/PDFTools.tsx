@@ -27,6 +27,8 @@ interface PDFToolsProps {
     onSummaryUpdated: (summaries: ChapterSummary[]) => void;
     onQueueSummary?: (chapterId: number, jobId: number) => void;
     onResolveSummaryQueueJob?: (jobId: number, status: 'success' | 'error', response: string) => void;
+    onQueueIdeaExtraction?: (chapterId: number, jobId: number) => void;
+    onResolveIdeaExtractionQueueJob?: (jobId: number, status: 'success' | 'error', response: string) => void;
 }
 
 const PDFTools: React.FC<PDFToolsProps> = ({
@@ -36,11 +38,15 @@ const PDFTools: React.FC<PDFToolsProps> = ({
     onSummaryUpdated,
     onQueueSummary,
     onResolveSummaryQueueJob,
+    onQueueIdeaExtraction,
+    onResolveIdeaExtractionQueueJob,
 }) => {
     const [loadingAction, setLoadingAction] = useState<string | null>(null);
     const { toast, showToast, dismissToast } = useToast();
     const pendingSummaryJobsRef = useRef<Map<number, number>>(new Map());
     const processingSummaryJobRef = useRef<Set<number>>(new Set());
+    const pendingIdeaExtractionJobsRef = useRef<Map<number, number>>(new Map());
+    const processingIdeaExtractionJobsRef = useRef<Set<number>>(new Set());
 
     const runAction = useCallback(
         async (id: string, action: () => Promise<void>, successMsg: string) => {
@@ -113,7 +119,45 @@ const PDFTools: React.FC<PDFToolsProps> = ({
         }
     }, [onResolveSummaryQueueJob, onSummaryUpdated]);
 
-    useJobCompletionSubscription(handleChapterSummaryCompletion);
+    const handleIdeaExtractionCompletion = useCallback(async (jobId: number) => {
+        const chapterForJob = pendingIdeaExtractionJobsRef.current.get(jobId);
+        if (chapterForJob == null || processingIdeaExtractionJobsRef.current.has(jobId)) {
+            return;
+        }
+
+        processingIdeaExtractionJobsRef.current.add(jobId);
+
+        try {
+            const job = await fetchQueueJob(jobId);
+
+            if (job.status !== 'COMPLETED') {
+                const errorMessage = job.errorText?.trim() || 'Idea extraction failed while processing in queue.';
+                onResolveIdeaExtractionQueueJob?.(jobId, 'error', errorMessage);
+                return;
+            }
+
+            onResolveIdeaExtractionQueueJob?.(jobId, 'success', 'Key ideas have been extracted.');
+        } catch (error) {
+            const errorMessage = getApiErrorMessage(error, 'Failed to resolve key idea extraction completion.');
+            onResolveIdeaExtractionQueueJob?.(jobId, 'error', errorMessage);
+        } finally {
+            pendingIdeaExtractionJobsRef.current.delete(jobId);
+            processingIdeaExtractionJobsRef.current.delete(jobId);
+        }
+    }, [onResolveIdeaExtractionQueueJob]);
+
+    const handleToolQueueCompletion = useCallback(async (jobId: number) => {
+        if (pendingSummaryJobsRef.current.has(jobId)) {
+            await handleChapterSummaryCompletion(jobId);
+            return;
+        }
+
+        if (pendingIdeaExtractionJobsRef.current.has(jobId)) {
+            await handleIdeaExtractionCompletion(jobId);
+        }
+    }, [handleChapterSummaryCompletion, handleIdeaExtractionCompletion]);
+
+    useJobCompletionSubscription(handleToolQueueCompletion);
 
     const handleBookSummary = () =>
         runAction(
@@ -122,13 +166,28 @@ const PDFTools: React.FC<PDFToolsProps> = ({
             'Book summary created successfully!',
         );
 
-    const handleMarkIdeas = () => {
+    const handleMarkIdeas = async () => {
         if (!chapterId) return;
-        runAction(
-            'mark-ideas',
-            () => markKeyIdeas(chapterId),
-            'Key ideas have been marked!',
-        );
+
+        setLoadingAction('mark-ideas');
+        try {
+            const result = await markKeyIdeas(chapterId);
+
+            if (result.mode === 'queued') {
+                pendingIdeaExtractionJobsRef.current.set(result.jobId, chapterId);
+                onQueueIdeaExtraction?.(chapterId, result.jobId);
+                showToast('Idea extraction request queued.', 'success');
+                return;
+            }
+
+            showToast('Key ideas have been marked!', 'success');
+        } catch (err) {
+            console.error(err);
+            const errorMessage = getApiErrorMessage(err, 'Error: key idea extraction failed.');
+            showToast(errorMessage, 'error');
+        } finally {
+            setLoadingAction(null);
+        }
     };
 
     return (

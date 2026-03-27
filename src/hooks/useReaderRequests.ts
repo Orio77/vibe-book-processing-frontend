@@ -13,7 +13,7 @@ export interface ReaderRequest {
     id: string;
     chapterId: number;
     jobId?: number;
-    type: 'explain' | 'query' | 'summary' | 'idea-explain';
+    type: 'explain' | 'query' | 'summary' | 'idea-explain' | 'idea-extract';
     query?: string;
     sentences: Sentence[];
     timestamp: Date;
@@ -202,9 +202,43 @@ export function useReaderRequests(
         [],
     );
 
+    const registerIdeaExtractionQueueJob = useCallback((chapterId: number, jobId: number) => {
+        const requestId = crypto.randomUUID();
+        const ideaExtractionRequest: ReaderRequest = {
+            id: requestId,
+            chapterId,
+            jobId,
+            type: 'idea-extract',
+            query: 'Extract key ideas',
+            sentences: [],
+            timestamp: new Date(),
+            status: 'pending',
+        };
+
+        setRequests(prev => [...prev, ideaExtractionRequest]);
+        return requestId;
+    }, []);
+
+    const resolveIdeaExtractionQueueJob = useCallback(
+        (jobId: number, status: 'success' | 'error', response: string) => {
+            const update = { status, response };
+            setRequests(prev => prev.map((request) => (
+                request.type === 'idea-extract' && request.jobId === jobId
+                    ? { ...request, ...update }
+                    : request
+            )));
+            setSelectedRequest(prev => (
+                prev?.type === 'idea-extract' && prev.jobId === jobId
+                    ? { ...prev, ...update }
+                    : prev
+            ));
+        },
+        [],
+    );
+
     const handleJobCompleted = useCallback(async (jobId: number) => {
         const matchingRequest = requestsRef.current.find(
-            (request) => request.type !== 'summary' && request.type !== 'idea-explain' && request.jobId === jobId && request.status === 'pending',
+            (request) => request.type !== 'summary' && request.type !== 'idea-explain' && request.type !== 'idea-extract' && request.jobId === jobId && request.status === 'pending',
         );
         if (!matchingRequest || processingJobIdsRef.current.has(jobId)) {
             return;
@@ -249,6 +283,8 @@ export function useReaderRequests(
         resolveSummaryQueueJob,
         registerIdeaExplanationQueueJob,
         resolveIdeaExplanationQueueJob,
+        registerIdeaExtractionQueueJob,
+        resolveIdeaExtractionQueueJob,
         openRequest,
         closeRequestModal,
     } as const;

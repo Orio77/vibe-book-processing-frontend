@@ -151,6 +151,8 @@ const PDFReader = () => {
         resolveSummaryQueueJob,
         registerIdeaExplanationQueueJob,
         resolveIdeaExplanationQueueJob,
+        registerIdeaExtractionQueueJob,
+        resolveIdeaExtractionQueueJob,
         openRequest,
         closeRequestModal,
     } = useReaderRequests(activeChapter, markedSentences, exitMarkingMode);
@@ -189,16 +191,18 @@ const PDFReader = () => {
 
     const pendingRequestCount = requests.filter((request) => request.status === 'pending').length;
 
-    const getRequestSuccessMessage = useCallback((requestType: 'query' | 'explain' | 'summary' | 'idea-explain') => {
+    const getRequestSuccessMessage = useCallback((requestType: 'query' | 'explain' | 'summary' | 'idea-explain' | 'idea-extract') => {
         if (requestType === 'summary') return 'Chapter summary is ready.';
         if (requestType === 'idea-explain') return 'Idea explanation is ready.';
+        if (requestType === 'idea-extract') return 'Idea extraction is ready.';
         if (requestType === 'explain') return 'Explanation is ready.';
         return 'Chat response is ready.';
     }, []);
 
-    const getRequestErrorMessage = useCallback((requestType: 'query' | 'explain' | 'summary' | 'idea-explain') => {
+    const getRequestErrorMessage = useCallback((requestType: 'query' | 'explain' | 'summary' | 'idea-explain' | 'idea-extract') => {
         if (requestType === 'summary') return 'Chapter summary request failed.';
         if (requestType === 'idea-explain') return 'Idea explanation request failed.';
+        if (requestType === 'idea-extract') return 'Idea extraction request failed.';
         if (requestType === 'explain') return 'Explanation request failed.';
         return 'Chat request failed.';
     }, []);
@@ -206,6 +210,7 @@ const PDFReader = () => {
     const getSelectedRequestTitle = useCallback(() => {
         if (selectedRequest?.type === 'summary') return 'Chapter Summary';
         if (selectedRequest?.type === 'idea-explain') return 'Idea Explanation';
+        if (selectedRequest?.type === 'idea-extract') return 'Idea Extraction';
         if (selectedRequest?.type === 'explain') return 'Explanation';
         return 'Chat Response';
     }, [selectedRequest?.type]);
@@ -237,6 +242,14 @@ const PDFReader = () => {
     const handleResolveIdeaExplanationQueueJob = useCallback((jobId: number, status: 'success' | 'error', response: string) => {
         resolveIdeaExplanationQueueJob(jobId, status, response);
     }, [resolveIdeaExplanationQueueJob]);
+
+    const handleQueueIdeaExtraction = useCallback((chapterId: number, jobId: number) => {
+        registerIdeaExtractionQueueJob(chapterId, jobId);
+    }, [registerIdeaExtractionQueueJob]);
+
+    const handleResolveIdeaExtractionQueueJob = useCallback((jobId: number, status: 'success' | 'error', response: string) => {
+        resolveIdeaExtractionQueueJob(jobId, status, response);
+    }, [resolveIdeaExtractionQueueJob]);
 
     useEffect(() => {
         requests.forEach((request) => {
@@ -715,6 +728,8 @@ const PDFReader = () => {
                             onSummaryUpdated={syncSummaries}
                             onQueueSummary={handleQueueSummary}
                             onResolveSummaryQueueJob={handleResolveSummaryQueueJob}
+                            onQueueIdeaExtraction={handleQueueIdeaExtraction}
+                            onResolveIdeaExtractionQueueJob={handleResolveIdeaExtractionQueueJob}
                         />
 
                         {/* Main Content Area */}

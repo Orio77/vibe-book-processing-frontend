@@ -195,12 +195,26 @@ export async function createBookSummary(pdfId: number): Promise<void> {
     });
 }
 
+export type IdeaExtractionDispatchResult =
+    | { mode: 'queued'; jobId: number }
+    | { mode: 'ready' };
+
 export async function markKeyIdeas(
     chapterId: number,
-): Promise<void> {
-    await apiClient.post(`${PROCESS_URL}/idea/extract`, null, {
+): Promise<IdeaExtractionDispatchResult> {
+    const res = await apiClient.post<string | number>(`${PROCESS_URL}/idea/extract`, null, {
         params: { chapterId },
     });
+
+    if (res.status === 202) {
+        const queuedJobId = coerceNumber(res.data);
+        if (queuedJobId === null) {
+            throw new TypeError('Idea extraction queue job id is missing in backend payload');
+        }
+        return { mode: 'queued', jobId: queuedJobId };
+    }
+
+    return { mode: 'ready' };
 }
 
 export async function fetchIdeasByChapterId(chapterId: number): Promise<IdeaWithSentences[]> {
