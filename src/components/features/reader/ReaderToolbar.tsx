@@ -43,6 +43,9 @@ interface RequestQueueButtonProps {
     readonly onOpenRequestQueue: () => void;
 }
 
+const toolbarCtrlClass =
+    'inline-flex items-center justify-center gap-1.5 h-9 px-3 rounded-lg border text-sm font-medium transition-colors whitespace-nowrap shrink-0';
+
 function ReaderViewToggleButton({
     readerViewMode,
     onToggleReaderView,
@@ -50,15 +53,16 @@ function ReaderViewToggleButton({
     return (
         <button
             onClick={onToggleReaderView}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${readerViewMode
+            className={`${toolbarCtrlClass} ${readerViewMode
                 ? 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800'
                 : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                 }`}
             aria-label={readerViewMode ? 'Exit reader view' : 'Enter reader view'}
             aria-pressed={readerViewMode}
         >
-            <BookOpen size={14} />
-            {readerViewMode ? 'Exit Reader View' : 'Reader View'}
+            <BookOpen size={14} className="shrink-0" />
+            <span className="hidden lg:inline">{readerViewMode ? 'Exit Reader View' : 'Reader View'}</span>
+            <span className="lg:hidden">{readerViewMode ? 'Exit' : 'View'}</span>
         </button>
     );
 }
@@ -67,11 +71,12 @@ function ReaderSettingsButton({ onOpenReaderSettings }: ReaderSettingsButtonProp
     return (
         <button
             onClick={onOpenReaderSettings}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition-colors text-sm font-medium"
+            className={`${toolbarCtrlClass} border-slate-200 bg-white text-slate-700 hover:bg-slate-50`}
             aria-label="Open reader view settings"
         >
-            <Settings2 size={14} />
-            Reader Settings
+            <Settings2 size={14} className="shrink-0" />
+            <span className="hidden lg:inline">Reader Settings</span>
+            <span className="lg:hidden">Settings</span>
         </button>
     );
 }
@@ -80,11 +85,11 @@ function RequestQueueButton({ requestCount, pendingRequestCount, onOpenRequestQu
     return (
         <button
             onClick={onOpenRequestQueue}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition-colors text-sm font-medium"
+            className={`${toolbarCtrlClass} border-slate-200 bg-white text-slate-700 hover:bg-slate-50`}
             aria-label="Open request queue"
             title="Open request queue"
         >
-            <ListTodo size={14} />
+            <ListTodo size={14} className="shrink-0" />
             Queue
             {requestCount > 0 && (
                 <span className="ml-1 inline-flex items-center justify-center min-w-[1.35rem] h-5 px-1.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-700">
@@ -103,8 +108,9 @@ interface SidebarToggleButtonProps {
 function SidebarToggleButton({ sidebarOpen, onToggleSidebar }: SidebarToggleButtonProps) {
     return (
         <button
+            type="button"
             onClick={onToggleSidebar}
-            className="p-2 -ml-2 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"
+            className="inline-flex h-9 w-9 shrink-0 -ml-1 items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"
             aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
             aria-controls="reader-sidebar"
             aria-expanded={sidebarOpen}
@@ -142,8 +148,8 @@ function CollapsedToolbar({
     | 'onOpenRequestQueue'
 >) {
     return (
-        <div className="bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-2.5 flex items-center justify-between sticky top-0 z-10">
-            <div className="flex items-center gap-3">
+        <div className="bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-2 flex items-center justify-between gap-3 sticky top-0 z-10">
+            <div className="flex items-center gap-2 min-w-0">
                 {!readerViewMode && (
                     <SidebarToggleButton
                         sidebarOpen={sidebarOpen}
@@ -155,7 +161,7 @@ function CollapsedToolbar({
                 </span>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
                 <ReaderViewToggleButton
                     readerViewMode={readerViewMode}
                     onToggleReaderView={onToggleReaderView}
@@ -171,13 +177,13 @@ function CollapsedToolbar({
 
                 <button
                     onClick={onToggleToolbar}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors text-sm font-medium"
+                    className={`${toolbarCtrlClass} border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-800 gap-1`}
                     aria-label="Expand top bar"
                     aria-controls="reader-toolbar-content"
                     aria-expanded={toolbarExpanded}
                 >
-                    <ChevronDown size={16} />
-                    Expand bar
+                    <ChevronDown size={16} className="shrink-0" />
+                    <span className="hidden sm:inline">Expand bar</span>
                 </button>
             </div>
         </div>
@@ -209,8 +215,8 @@ function ExpandedToolbar({
     onOpenRequestQueue,
 }: ReaderToolbarProps) {
     return (
-        <div className="bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-10">
-            <div className="flex items-center gap-3" id="reader-toolbar-content">
+        <div className="bg-white/80 backdrop-blur-md border-b border-slate-200 px-3 sm:px-4 py-2 flex flex-nowrap items-center justify-between gap-3 sticky top-0 z-10">
+            <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden" id="reader-toolbar-content">
                 {!readerViewMode && (
                     <SidebarToggleButton
                         sidebarOpen={sidebarOpen}
@@ -219,96 +225,94 @@ function ExpandedToolbar({
                 )}
                 <Link
                     to={ROUTES.HOME}
-                    className="hidden sm:flex items-center text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors bg-slate-50 hover:bg-slate-100 px-3 py-1.5 rounded-md"
+                    className="hidden sm:inline-flex items-center justify-center gap-1.5 h-9 shrink-0 text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors bg-slate-50 hover:bg-slate-100 px-3 rounded-lg border border-transparent hover:border-slate-200 whitespace-nowrap"
                 >
-                    <ArrowLeft size={16} className="mr-1.5" /> Library
+                    <ArrowLeft size={16} className="shrink-0" /> Library
                 </Link>
 
-                <div className="h-4 w-px bg-slate-200 hidden sm:block mx-2" />
+                <div className="h-5 w-px shrink-0 bg-slate-200 hidden sm:block" aria-hidden />
 
                 {activeChapter ? (
-                    <span className="text-sm font-medium text-slate-700 truncate max-w-[160px] sm:max-w-xs lg:max-w-md">
+                    <span className="text-sm font-medium text-slate-700 truncate min-w-0 max-w-[140px] sm:max-w-[200px] md:max-w-xs lg:max-w-md">
                         {activeChapter.title}
                     </span>
                 ) : (
-                    <span className="text-sm font-medium text-slate-400 italic">
+                    <span className="text-sm font-medium text-slate-400 italic shrink-0">
                         Unmapped section
                     </span>
                 )}
 
                 {activeChapter && !readerViewMode && (
                     <>
-                        <div className="h-4 w-px bg-slate-200 mx-1" />
+                        <div className="h-5 w-px shrink-0 bg-slate-200 hidden md:block" aria-hidden />
                         <button
                             onClick={onToggleSummaryView}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${summaryView
-                                ? 'bg-blue-600 text-white shadow-sm'
-                                : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200'
+                            className={`${toolbarCtrlClass} border ${summaryView
+                                ? 'bg-blue-600 text-white border-blue-600 shadow-sm hover:bg-blue-700'
+                                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200'
                                 }`}
                         >
                             {summaryView
-                                ? <><BookOpen size={14} /> Reading</>
-                                : <><Sparkles size={14} /> Summary</>
+                                ? <><BookOpen size={14} className="shrink-0" /> Reading</>
+                                : <><Sparkles size={14} className="shrink-0" /> Summary</>
                             }
                         </button>
 
-                        <div className="h-4 w-px bg-slate-200 mx-1" />
                         <button
                             onClick={onToggleIdeas}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${showIdeas
-                                ? 'bg-amber-500 text-white shadow-sm'
-                                : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200'
+                            className={`${toolbarCtrlClass} border ${showIdeas
+                                ? 'bg-amber-500 text-white border-amber-500 shadow-sm hover:bg-amber-600'
+                                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200'
                                 }`}
                         >
-                            <Lightbulb size={14} /> Ideas
+                            <Lightbulb size={14} className="shrink-0" /> Ideas
                         </button>
 
-                        <div className="h-4 w-px bg-slate-200 mx-1" />
                         <button
                             onClick={onToggleChat}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${showChat
-                                ? 'bg-teal-600 text-white shadow-sm'
-                                : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-teal-50 hover:text-teal-700 hover:border-teal-200'
+                            className={`${toolbarCtrlClass} border ${showChat
+                                ? 'bg-teal-600 text-white border-teal-600 shadow-sm hover:bg-teal-700'
+                                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-teal-50 hover:text-teal-700 hover:border-teal-200'
                                 }`}
                         >
-                            <MessageSquare size={14} /> Chat
+                            <MessageSquare size={14} className="shrink-0" /> Chat
                         </button>
                     </>
                 )}
             </div>
 
-            <div className="flex items-center gap-4">
-                <div className="flex items-center bg-slate-50 rounded-lg p-1 border border-slate-200">
-                    <span className="text-sm text-slate-500 px-2">
-                        <input
-                            type="number"
-                            value={page}
-                            onChange={(e) => {
-                                const val = Number.parseInt(e.target.value);
-                                if (!Number.isNaN(val)) onGoToPage(val);
-                            }}
-                            className="w-12 text-center bg-white border border-slate-200 rounded-md py-0.5 mx-1 text-slate-700 font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                            aria-label="Page number"
-                        />
-                        <span className="text-slate-400">/ {totalPages}</span>
-                    </span>
+            <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-1.5 h-9 pl-2 pr-2.5 bg-slate-50 rounded-lg border border-slate-200">
+                    <input
+                        type="number"
+                        value={page}
+                        onChange={(e) => {
+                            const val = Number.parseInt(e.target.value, 10);
+                            if (!Number.isNaN(val)) onGoToPage(val);
+                        }}
+                        className="h-7 w-10 sm:w-11 text-center text-sm bg-white border border-slate-200 rounded-md text-slate-700 font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        aria-label="Page number"
+                    />
+                    <span className="text-sm text-slate-400 tabular-nums whitespace-nowrap">/ {totalPages}</span>
                 </div>
-                <div className="flex rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+                <div className="flex h-9 rounded-lg shadow-sm border border-slate-200 overflow-hidden shrink-0">
                     <button
+                        type="button"
                         onClick={onPrev}
                         disabled={page <= 1}
-                        className="p-2 bg-white text-slate-600 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-slate-600 transition-colors border-r border-slate-200"
+                        className="flex items-center justify-center w-9 px-0 bg-white text-slate-600 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-slate-600 transition-colors border-r border-slate-200"
                         aria-label="Previous page"
                     >
-                        <ChevronLeft size={20} />
+                        <ChevronLeft size={18} />
                     </button>
                     <button
+                        type="button"
                         onClick={onNext}
                         disabled={page >= totalPages}
-                        className="p-2 bg-white text-slate-600 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-slate-600 transition-colors"
+                        className="flex items-center justify-center w-9 px-0 bg-white text-slate-600 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-slate-600 transition-colors"
                         aria-label="Next page"
                     >
-                        <ChevronRight size={20} />
+                        <ChevronRight size={18} />
                     </button>
                 </div>
                 <ReaderViewToggleButton
@@ -322,8 +326,9 @@ function ExpandedToolbar({
                     onOpenRequestQueue={onOpenRequestQueue}
                 />
                 <button
+                    type="button"
                     onClick={onToggleToolbar}
-                    className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors"
+                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors"
                     aria-label="Collapse top bar"
                     aria-controls="reader-toolbar-content"
                     aria-expanded={toolbarExpanded}

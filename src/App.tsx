@@ -1,8 +1,9 @@
 import { lazy, Suspense, useCallback, useRef } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { NavBar, ErrorBoundary, LoadingSpinner, NotFound, Toast } from '@/components/ui';
 import { useJobCompletionSubscription, useToast } from '@/hooks';
 import { ROUTES } from '@/lib/constants';
+import type { ToastData } from '@/types';
 import { fetchQueueJob } from '@/lib/api';
 
 const PENDING_UPLOAD_JOB_IDS_KEY = 'pendingUploadJobIds';
@@ -70,30 +71,51 @@ function App() {
     return (
         <Router>
             <ErrorBoundary>
-                <div className="min-h-screen bg-slate-50 font-sans text-slate-800 selection:bg-blue-200 selection:text-blue-900">
-                    <NavBar />
-
-                    <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-                        <Suspense fallback={<LoadingSpinner className="h-64" />}>
-                            <Routes>
-                                <Route path={ROUTES.HOME} element={<PDFList />} />
-                                <Route path={ROUTES.UPLOAD} element={<UploadPDF />} />
-                                <Route path={ROUTES.READ} element={<PDFReader />} />
-                                <Route path="*" element={<NotFound />} />
-                            </Routes>
-                        </Suspense>
-                    </main>
-
-                    {toast && (
-                        <Toast
-                            message={toast.message}
-                            type={toast.type}
-                            onClose={dismissToast}
-                        />
-                    )}
-                </div>
+                <AppShell toast={toast} dismissToast={dismissToast} />
             </ErrorBoundary>
         </Router>
+    );
+}
+
+function AppShell({
+    toast,
+    dismissToast,
+}: {
+    readonly toast: ToastData | null;
+    readonly dismissToast: () => void;
+}) {
+    const location = useLocation();
+    const isReaderRoute = location.pathname.startsWith('/read/');
+
+    return (
+        <div className="min-h-screen flex flex-col bg-slate-50 font-sans text-slate-800 selection:bg-blue-200 selection:text-blue-900">
+            <NavBar />
+
+            <main
+                className={
+                    isReaderRoute
+                        ? 'flex flex-1 min-h-0 flex-col w-full overflow-hidden'
+                        : 'max-w-7xl mx-auto w-full py-8 px-4 sm:px-6 lg:px-8 flex-1 min-h-0'
+                }
+            >
+                <Suspense fallback={<LoadingSpinner className="h-64" />}>
+                    <Routes>
+                        <Route path={ROUTES.HOME} element={<PDFList />} />
+                        <Route path={ROUTES.UPLOAD} element={<UploadPDF />} />
+                        <Route path={ROUTES.READ} element={<PDFReader />} />
+                        <Route path="*" element={<NotFound />} />
+                    </Routes>
+                </Suspense>
+            </main>
+
+            {toast && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    onClose={dismissToast}
+                />
+            )}
+        </div>
     );
 }
 

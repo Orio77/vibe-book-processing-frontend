@@ -618,7 +618,7 @@ const PDFReader = () => {
         : `${READER_TEXT_WIDTH_CLASSES[readerSettings.textWidth]} mx-auto py-8 px-6 sm:px-10 lg:py-12 ${READER_THEME_CLASSES[readerSettings.theme].text} font-serif`;
 
     return (
-        <div className="flex flex-col h-[calc(100vh-64px)] overflow-hidden bg-slate-50 relative">
+        <div className="flex flex-col flex-1 min-h-0 overflow-hidden bg-slate-50 relative">
             {readerViewMode ? (
                 <div
                     className={readerViewWrapperClassName}
