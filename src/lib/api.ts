@@ -371,6 +371,9 @@ export async function processChapterContext(
 
 export interface PDFChatRequest {
     chapterId: number;
+    /** Optional labels so the server can attach chapter/book context even when only a few sentences are sent. */
+    chapterTitle?: string;
+    bookTitle?: string;
     query?: string;
     context: { sentenceId: number; sentenceContent: string }[];
 }

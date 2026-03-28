@@ -13,8 +13,13 @@ function resolveWsEndpoint(): string {
     return `${origin}/ws`;
 }
 
-export function useJobCompletionSubscription(onCompleted: (jobId: number) => void) {
+export function useJobCompletionSubscription(
+    onCompleted: (jobId: number) => void,
+    enabled: boolean = true,
+) {
     useEffect(() => {
+        if (!enabled) return;
+
         const endpoint = resolveWsEndpoint();
         const client = new Client({
             webSocketFactory: () => new SockJS(endpoint),
@@ -37,5 +42,5 @@ export function useJobCompletionSubscription(onCompleted: (jobId: number) => voi
         return () => {
             client.deactivate().catch(() => undefined);
         };
-    }, [onCompleted]);
+    }, [onCompleted, enabled]);
 }

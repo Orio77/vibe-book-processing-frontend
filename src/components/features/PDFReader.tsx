@@ -1,13 +1,20 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Navigate } from 'react-router-dom';
+import { ReaderSessionProvider, useReaderSession } from '@/context/ReaderSessionContext';
+import { buildOfflineBundleZip, exportOfflineRecordToZipBlob } from '@/lib/offline';
 import { ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react';
 import { usePdfReader, useReaderIdeas, useReaderChat, useReaderSummary, useSentenceMarking, useReaderRequests, useReaderViewSettings, useToast } from '@/hooks';
 import { LoadingSpinner, Modal, Toast } from '@/components/ui';
+import { OfflineLlmSettingsModal } from '@/components/features/OfflineLlmSettingsModal';
 import { ReaderSidebar, ReaderToolbar, PageSkeleton, BlankPage, RequestQueuePanel } from './reader';
 import { SummaryViewer } from './SummaryViewer';
 import { IdeaArgumentsModal } from './IdeaArgumentsModal';
 import { ChatResponseModal } from './ChatResponseModal';
 import type { Sentence, PDFChatResponse } from '@/types';
+import type { IdeaExplanationDTO } from '@/types';
+import type { OfflineBookRecord } from '@/types/offlineLibrary';
+import { getApiErrorMessage } from '@/lib/api';
+import { ROUTES } from '@/lib/constants';
 
 const READER_THEME_CLASSES = {
     light: {
@@ -40,8 +47,8 @@ type PullIndicatorState = {
     progress: number;
 };
 
-const PDFReader = () => {
-    const { id } = useParams<{ id: string }>();
+export function PDFReaderShell() {
+    const session = useReaderSession();
     const {
         pdfInfo,
         chapters,
@@ -54,13 +61,15 @@ const PDFReader = () => {
         goToPage,
         prevPage,
         nextPage,
-    } = usePdfReader(id);
+    } = usePdfReader();
 
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [toolbarExpanded, setToolbarExpanded] = useState(false);
     const [readerViewMode, setReaderViewMode] = useState(false);
     const [readerSettingsOpen, setReaderSettingsOpen] = useState(false);
     const [requestQueueOpen, setRequestQueueOpen] = useState(false);
+    const [llmSettingsOpen, setLlmSettingsOpen] = useState(false);
+    const [exportingPack, setExportingPack] = useState(false);
     const [isCoarsePointer, setIsCoarsePointer] = useState(false);
     const [pullIndicator, setPullIndicator] = useState<PullIndicatorState>({
         active: false,
@@ -89,7 +98,11 @@ const PDFReader = () => {
         settings: readerSettings,
         updateSettings: updateReaderSettings,
         resetSettings: resetReaderSettings,
-    } = useReaderViewSettings(pdfInfo?.id ?? id ?? null);
+    } = useReaderViewSettings(
+        session.mode === 'offline'
+            ? `offline:${session.bundle.manifest.exportId}`
+            : (pdfInfo?.id ?? undefined),
+    );
 
     // ── Extracted domain hooks ──
     const {
@@ -155,7 +168,7 @@ const PDFReader = () => {
         resolveIdeaExtractionQueueJob,
         openRequest,
         closeRequestModal,
-    } = useReaderRequests(activeChapter, markedSentences, exitMarkingMode);
+    } = useReaderRequests(activeChapter, markedSentences, exitMarkingMode, pdfInfo?.title);
 
     const { toast, showToast, dismissToast } = useToast();
     const completedRequestToastIdsRef = useRef<Set<string>>(new Set());
@@ -226,6 +239,59 @@ const PDFReader = () => {
         setQueryText('');
         setShowQueryBox(false);
     }, [handleSendQuery, queryText, setQueryText, setShowQueryBox]);
+
+    const handleExportOfflinePack = useCallback(async () => {
+        if (session.mode !== 'online') return;
+        setExportingPack(true);
+        try {
+            const blob = await buildOfflineBundleZip(session.pdfId);
+            const safeTitle = (pdfInfo?.title ?? 'book').replace(/[^\w\-.,()]+/g, '_').slice(0, 80);
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${safeTitle}-offline-pack.zip`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Offline pack downloaded.', 'success');
+        } catch (error) {
+            console.error(error);
+            showToast(getApiErrorMessage(error, 'Export failed.'), 'error');
+        } finally {
+            setExportingPack(false);
+        }
+    }, [session, pdfInfo?.title, showToast]);
+
+    const handleDownloadOfflineLibraryZip = useCallback(async () => {
+        if (session.mode !== 'offline') return;
+        await session.flushOfflineSave();
+        const safeTitle = (pdfInfo?.title ?? 'book').replace(/[^\w\-.,()]+/g, '_').slice(0, 80);
+        const record: OfflineBookRecord = {
+            exportId: session.exportId,
+            manifest: session.bundle.manifest,
+            book: session.bundle.book,
+            lastPage: page,
+            updatedAt: new Date().toISOString(),
+        };
+        const blob = exportOfflineRecordToZipBlob(record);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${safeTitle}-offline-pack.zip`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast('Pack downloaded.', 'success');
+    }, [session, pdfInfo?.title, page, showToast]);
+
+    const handleOfflineAppendIdeaExplanation = useCallback(
+        (ideaId: number, row: IdeaExplanationDTO) => {
+            if (session.mode !== 'offline') return;
+            session.patchBook((draft) => {
+                const list = draft.ideaExplanationsByIdeaId[ideaId] ?? [];
+                draft.ideaExplanationsByIdeaId[ideaId] = [row, ...list];
+            });
+        },
+        [session],
+    );
 
     const handleQueueSummary = useCallback((chapterId: number, jobId: number) => {
         registerSummaryQueueJob(chapterId, jobId);
@@ -403,7 +469,10 @@ const PDFReader = () => {
         const isIdea = showIdeas && ideasForSentence && ideasForSentence.length > 0;
         const isMarked = markedSentences.some(m => m.id === s.id);
         const chatIconResponses = sentenceChatIconMap.get(s.id);
-        const hasChatIcon = showChat && !isMarkingMode && !!chatIconResponses;
+        const hasChatIcon =
+            !isMarkingMode
+            && !!chatIconResponses
+            && (session.mode === 'offline' || showChat);
         const isChatHighlighted = highlightedSentenceIds.has(s.id);
 
         const chatIcons = hasChatIcon && chatIconResponses
@@ -723,6 +792,7 @@ const PDFReader = () => {
                             chapters={chapters}
                             activeChapter={activeChapter}
                             sidebarOpen={sidebarOpen}
+                            offlineMode={session.mode === 'offline'}
                             onClose={() => setSidebarOpen(false)}
                             onJumpToChapter={handleJumpToChapter}
                             onSummaryUpdated={syncSummaries}
@@ -757,6 +827,14 @@ const PDFReader = () => {
                                 requestCount={requests.length}
                                 pendingRequestCount={pendingRequestCount}
                                 onOpenRequestQueue={() => setRequestQueueOpen(true)}
+                                onExportOfflinePack={session.mode === 'online' ? handleExportOfflinePack : undefined}
+                                exportOfflinePackLoading={exportingPack}
+                                onOpenOfflineLlmSettings={session.mode === 'offline' ? () => setLlmSettingsOpen(true) : undefined}
+                                libraryLinkTo={session.mode === 'offline' ? ROUTES.READ_OFFLINE : undefined}
+                                libraryLabel={session.mode === 'offline' ? 'Offline library' : undefined}
+                                onDownloadOfflineLibraryZip={
+                                    session.mode === 'offline' ? handleDownloadOfflineLibraryZip : undefined
+                                }
                             />
 
                             {summaryView ? (
@@ -869,6 +947,7 @@ const PDFReader = () => {
                             chapterId={activeChapter?.id}
                             onQueueIdeaExplanation={handleQueueIdeaExplanation}
                             onResolveIdeaExplanationQueueJob={handleResolveIdeaExplanationQueueJob}
+                            onOfflineAppendIdeaExplanation={handleOfflineAppendIdeaExplanation}
                         />
 
                         <ChatResponseModal
@@ -877,6 +956,11 @@ const PDFReader = () => {
                             chatResponse={selectedChatResponse}
                             onDelete={handleDeleteChatResponse}
                             onSave={handleSaveChatResponse}
+                        />
+
+                        <OfflineLlmSettingsModal
+                            isOpen={llmSettingsOpen}
+                            onClose={() => setLlmSettingsOpen(false)}
                         />
 
                         <Modal
@@ -1062,6 +1146,16 @@ const PDFReader = () => {
             )}
         </div>
     );
-};
+}
 
-export default PDFReader;
+export default function PDFReader() {
+    const { id } = useParams<{ id: string }>();
+    if (!id) {
+        return <Navigate to={ROUTES.HOME} replace />;
+    }
+    return (
+        <ReaderSessionProvider session={{ mode: 'online', pdfId: id }}>
+            <PDFReaderShell />
+        </ReaderSessionProvider>
+    );
+}

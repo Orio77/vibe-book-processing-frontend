@@ -11,5 +11,10 @@ export const ROUTES = {
     HOME: '/',
     UPLOAD: '/upload',
     READ: '/read/:id',
+    /** Must be registered before READ so "offline" is not captured as :id */
+    READ_OFFLINE: '/read/offline',
+    /** Deep link to a saved IndexedDB pack */
+    READ_OFFLINE_EXPORT: '/read/offline/:exportId',
     readById: (id: number | string) => `/read/${id}`,
+    readOfflineByExportId: (exportId: string) => `/read/offline/${encodeURIComponent(exportId)}`,
 } as const;

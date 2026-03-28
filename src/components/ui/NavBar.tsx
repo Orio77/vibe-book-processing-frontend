@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Home, Upload, BookOpen } from 'lucide-react';
+import { Home, Upload, BookOpen, FolderOpen } from 'lucide-react';
 import { ROUTES } from '@/lib/constants';
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
@@ -30,6 +30,10 @@ export function NavBar() {
                             <NavLink to={ROUTES.UPLOAD} className={navLinkClass}>
                                 <Upload className="w-4 h-4 mr-2" />
                                 Upload PDF
+                            </NavLink>
+                            <NavLink to={ROUTES.READ_OFFLINE} className={navLinkClass}>
+                                <FolderOpen className="w-4 h-4 mr-2" />
+                                Offline library
                             </NavLink>
                         </div>
                     </div>

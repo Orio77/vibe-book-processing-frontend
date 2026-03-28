@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useReaderSession } from '@/context/ReaderSessionContext';
 import { fetchChatResponsesForChapter, updateChatResponse, deleteChatResponse } from '@/lib/api';
 import type { Chapter, Sentence, PDFChatResponse } from '@/types';
 
@@ -11,6 +12,7 @@ export function useReaderChat(
     activeChapter: Chapter | undefined,
     sentences: Sentence[],
 ) {
+    const session = useReaderSession();
     const [showChat, setShowChat] = useState(false);
     const [chatResponses, setChatResponses] = useState<PDFChatResponse[]>([]);
     const [loadingChat, setLoadingChat] = useState(false);
@@ -18,44 +20,58 @@ export function useReaderChat(
     const [selectedChatResponse, setSelectedChatResponse] = useState<PDFChatResponse | null>(null);
     const [highlightedChatResponseIdx, setHighlightedChatResponseIdx] = useState<string | null>(null);
 
-    // Fetch chat responses when enabled — with cancellation guard.
-    // setLoadingChat(true) happens in toggleChat to avoid setState-in-effect.
     useEffect(() => {
+        if (session.mode === 'offline') {
+            const apply = () => {
+                if (!activeChapter) {
+                    setChatResponses([]);
+                    return;
+                }
+                const rows = session.bundle.book.chatResponsesByChapterId[activeChapter.id] ?? [];
+                setChatResponses(rows);
+                setLoadingChat(false);
+            };
+            queueMicrotask(apply);
+            return;
+        }
+
         if (!showChat || !activeChapter) {
             return;
         }
 
         let cancelled = false;
 
-        fetchChatResponsesForChapter(activeChapter.id)
-            .then(data => { if (!cancelled) setChatResponses(data); })
-            .catch((_error) => {
-                console.error('Failed to load chat responses:', _error);
-                if (!cancelled) setChatResponses([]);
-            })
-            .finally(() => { if (!cancelled) setLoadingChat(false); });
+        queueMicrotask(() => {
+            if (cancelled) return;
+            setLoadingChat(true);
+            fetchChatResponsesForChapter(activeChapter.id)
+                .then(data => { if (!cancelled) setChatResponses(data); })
+                .catch((_error) => {
+                    console.error('Failed to load chat responses:', _error);
+                    if (!cancelled) setChatResponses([]);
+                })
+                .finally(() => { if (!cancelled) setLoadingChat(false); });
+        });
 
         return () => { cancelled = true; };
-    }, [showChat, activeChapter]);
+    }, [session, showChat, activeChapter]);
 
-    // Reset overlay state when chat is toggled off or chapter changes
     const toggleChat = useCallback(() => {
-        setShowChat(prev => {
+        setShowChat((prev) => {
             if (prev) {
-                // turning off — clear all chat overlay state
-                setChatResponses([]);
                 setHighlightedSentenceIds(new Set());
                 setHighlightedChatResponseIdx(null);
-                setLoadingChat(false);
-            } else {
-                // turning on — set loading before the effect fires
+                if (session.mode === 'online') {
+                    setChatResponses([]);
+                    setLoadingChat(false);
+                }
+            } else if (session.mode === 'online') {
                 setLoadingChat(true);
             }
             return !prev;
         });
-    }, []);
+    }, [session.mode]);
 
-    /** Map sentence ids → chat responses for placing icons at run boundaries */
     const sentenceChatIconMap = useMemo(() => {
         const groupKey = (ids: number[]) => [...ids].sort((a, b) => a - b).join(',');
         const groupMap = new Map<string, PDFChatResponse[]>();
@@ -107,17 +123,46 @@ export function useReaderChat(
     );
 
     const handleDeleteChatResponse = useCallback(async (id: number) => {
+        if (session.mode === 'offline' && activeChapter) {
+            session.patchBook((draft) => {
+                const cid = activeChapter.id;
+                draft.chatResponsesByChapterId[cid] = (draft.chatResponsesByChapterId[cid] ?? []).filter(
+                    (cr) => cr.chatResponseId !== id,
+                );
+            });
+            setChatResponses(prev => prev.filter(cr => cr.chatResponseId !== id));
+            setHighlightedSentenceIds(new Set());
+            setHighlightedChatResponseIdx(null);
+            return;
+        }
+
         await deleteChatResponse(id);
         setChatResponses(prev => prev.filter(cr => cr.chatResponseId !== id));
         setHighlightedSentenceIds(new Set());
         setHighlightedChatResponseIdx(null);
-    }, []);
+    }, [session, activeChapter]);
 
     const handleSaveChatResponse = useCallback(async (id: number, newText: string) => {
+        if (session.mode === 'offline' && activeChapter) {
+            session.patchBook((draft) => {
+                const cid = activeChapter.id;
+                draft.chatResponsesByChapterId[cid] = (draft.chatResponsesByChapterId[cid] ?? []).map((cr) => (
+                    cr.chatResponseId === id ? { ...cr, chatResponse: newText } : cr
+                ));
+            });
+            setChatResponses(prev => prev.map(cr => (
+                cr.chatResponseId === id ? { ...cr, chatResponse: newText } : cr
+            )));
+            setSelectedChatResponse(prev => (
+                prev?.chatResponseId === id ? { ...prev, chatResponse: newText } : prev
+            ));
+            return;
+        }
+
         const updated = await updateChatResponse(id, newText);
         setChatResponses(prev => prev.map(cr => cr.chatResponseId === id ? updated : cr));
         setSelectedChatResponse(updated);
-    }, []);
+    }, [session, activeChapter]);
 
     const closeChatModal = useCallback(() => setSelectedChatResponse(null), []);
 

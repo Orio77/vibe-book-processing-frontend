@@ -30,6 +30,10 @@ function writePendingUploadJobIds(jobIds: number[]): void {
 const PDFList = lazy(() => import('@/components/features/PDFList'));
 const UploadPDF = lazy(() => import('@/components/features/UploadPDF'));
 const PDFReader = lazy(() => import('@/components/features/PDFReader'));
+const OfflineLibraryPage = lazy(() => import('@/components/features/OfflineReaderPage'));
+const OfflineExportedReaderPage = lazy(() =>
+    import('@/components/features/OfflineReaderPage').then((m) => ({ default: m.OfflineExportedReaderPage })),
+);
 
 function App() {
     const processingJobsRef = useRef<Set<number>>(new Set());
@@ -102,6 +106,8 @@ function AppShell({
                     <Routes>
                         <Route path={ROUTES.HOME} element={<PDFList />} />
                         <Route path={ROUTES.UPLOAD} element={<UploadPDF />} />
+                        <Route path={ROUTES.READ_OFFLINE_EXPORT} element={<OfflineExportedReaderPage />} />
+                        <Route path={ROUTES.READ_OFFLINE} element={<OfflineLibraryPage />} />
                         <Route path={ROUTES.READ} element={<PDFReader />} />
                         <Route path="*" element={<NotFound />} />
                     </Routes>

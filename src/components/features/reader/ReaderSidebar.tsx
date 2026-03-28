@@ -7,6 +7,8 @@ interface ReaderSidebarProps {
     readonly chapters: Chapter[];
     readonly activeChapter: Chapter | undefined;
     readonly sidebarOpen: boolean;
+    /** When true, hide server-backed AI tools (summaries / idea extraction). */
+    readonly offlineMode?: boolean;
     readonly onClose: () => void;
     readonly onJumpToChapter: (ch: Chapter) => void;
     readonly onSummaryUpdated: (summaries: ChapterSummary[]) => void;
@@ -21,6 +23,7 @@ export function ReaderSidebar({
     chapters,
     activeChapter,
     sidebarOpen,
+    offlineMode = false,
     onClose,
     onJumpToChapter,
     onSummaryUpdated,
@@ -57,7 +60,7 @@ export function ReaderSidebar({
                 <div className="flex-1 overflow-y-auto custom-scrollbar">
                     <div className="p-4">
                         {/* AI Tools */}
-                        {pdfInfo && (
+                        {pdfInfo && !offlineMode && (
                             <div className="mb-8">
                                 <PDFTools
                                     pdfId={pdfInfo.id}

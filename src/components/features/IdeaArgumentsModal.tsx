@@ -2,6 +2,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Modal, LoadingSpinner } from '@/components/ui';
 import { createIdeaExplanation, fetchIdeaArguments, fetchIdeaExplanations, fetchQueueJob } from '@/lib/api';
 import { useJobCompletionSubscription } from '@/hooks';
+import { useReaderSessionOptional } from '@/context/ReaderSessionContext';
+import { generateIdeaExplanation, LlmRequestError } from '@/lib/llm/openaiCompatible';
+import { loadOfflineLlmSettings } from '@/lib/llm/settings';
 import type { IdeaWithSentences, IdeaArgumentDTO, IdeaExplanationDTO } from '@/types';
 
 const EXPLANATION_PREVIEW_LENGTH = 180;
@@ -13,6 +16,8 @@ interface IdeaArgumentsModalProps {
     readonly chapterId?: number;
     readonly onQueueIdeaExplanation?: (chapterId: number, ideaTitle: string, jobId: number) => void;
     readonly onResolveIdeaExplanationQueueJob?: (jobId: number, status: 'success' | 'error', response: string) => void;
+    /** Persist offline-generated explanations into the library book payload. */
+    readonly onOfflineAppendIdeaExplanation?: (ideaId: number, row: IdeaExplanationDTO) => void;
 }
 
 export function IdeaArgumentsModal({
@@ -22,7 +27,9 @@ export function IdeaArgumentsModal({
     chapterId,
     onQueueIdeaExplanation,
     onResolveIdeaExplanationQueueJob,
+    onOfflineAppendIdeaExplanation,
 }: IdeaArgumentsModalProps) {
+    const readerSession = useReaderSessionOptional();
     const [argumentsMap, setArgumentsMap] = useState<Record<number, IdeaArgumentDTO[]>>({});
     const [explanationsMap, setExplanationsMap] = useState<Record<number, IdeaExplanationDTO[]>>({});
     const [generatingExplanationByIdeaId, setGeneratingExplanationByIdeaId] = useState<Record<number, boolean>>({});
@@ -40,6 +47,24 @@ export function IdeaArgumentsModal({
 
         const fetchAllData = async () => {
             try {
+                if (readerSession?.mode === 'offline') {
+                    const book = readerSession.bundle.book;
+                    const newArgs: Record<number, IdeaArgumentDTO[]> = {};
+                    const newExplanations: Record<number, IdeaExplanationDTO[]> = {};
+                    for (const ideaObj of ideas) {
+                        const ideaId = ideaObj.idea.ideaId;
+                        newArgs[ideaId] = book.ideaArgumentsByIdeaId[ideaId] ?? [];
+                        newExplanations[ideaId] = book.ideaExplanationsByIdeaId[ideaId] ?? [];
+                    }
+                    if (isMounted) {
+                        setArgumentsMap(newArgs);
+                        setExplanationsMap(newExplanations);
+                        setExplanationErrorByIdeaId({});
+                        setExpandedExplanationIds({});
+                    }
+                    return;
+                }
+
                 const payload = await Promise.all(
                     ideas.map(async (ideaObj) => {
                         const ideaId = ideaObj.idea.ideaId;
@@ -88,7 +113,7 @@ export function IdeaArgumentsModal({
         return () => {
             isMounted = false;
         };
-    }, [isOpen, ideas]);
+    }, [isOpen, ideas, readerSession]);
 
     const handleGenerateExplanation = async (ideaId: number, ideaTitle: string) => {
         if (generatingExplanationByIdeaId[ideaId]) {
@@ -97,6 +122,36 @@ export function IdeaArgumentsModal({
 
         setGeneratingExplanationByIdeaId((prev) => ({ ...prev, [ideaId]: true }));
         setExplanationErrorByIdeaId((prev) => ({ ...prev, [ideaId]: null }));
+
+        if (readerSession?.mode === 'offline') {
+            try {
+                const settings = loadOfflineLlmSettings();
+                const args = argumentsMap[ideaId] ?? [];
+                const text = await generateIdeaExplanation(
+                    settings,
+                    ideaTitle,
+                    args.map((a) => a.text),
+                );
+                const newRow: IdeaExplanationDTO = {
+                    id: Math.floor(Math.random() * 1e9),
+                    ideaId,
+                    text,
+                };
+                onOfflineAppendIdeaExplanation?.(ideaId, newRow);
+                setExplanationsMap((prev) => {
+                    const current = prev[ideaId] || [];
+                    return { ...prev, [ideaId]: [newRow, ...current] };
+                });
+            } catch (error) {
+                const msg = error instanceof LlmRequestError
+                    ? error.message
+                    : 'Could not generate explanation right now. Please try again.';
+                setExplanationErrorByIdeaId((prev) => ({ ...prev, [ideaId]: msg }));
+            } finally {
+                setGeneratingExplanationByIdeaId((prev) => ({ ...prev, [ideaId]: false }));
+            }
+            return;
+        }
 
         try {
             const result = await createIdeaExplanation(ideaId, ideaTitle);
@@ -185,7 +240,7 @@ export function IdeaArgumentsModal({
         }
     }, [chapterId, onQueueIdeaExplanation, onResolveIdeaExplanationQueueJob]);
 
-    useJobCompletionSubscription(handleIdeaExplanationCompletion);
+    useJobCompletionSubscription(handleIdeaExplanationCompletion, readerSession?.mode !== 'offline');
 
     const toggleExplanationExpanded = (explanationId: number) => {
         setExpandedExplanationIds((prev) => ({

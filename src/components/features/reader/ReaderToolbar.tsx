@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, ArrowLeft, Menu, Sparkles, BookOpen, Lightbulb, MessageSquare, Settings2, ListTodo } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, ArrowLeft, Menu, Sparkles, BookOpen, Lightbulb, MessageSquare, Settings2, ListTodo, Download, KeyRound, Loader2 } from 'lucide-react';
 import { ROUTES } from '@/lib/constants';
 import type { Chapter } from '@/types';
 
@@ -26,6 +26,12 @@ interface ReaderToolbarProps {
     readonly requestCount: number;
     readonly pendingRequestCount: number;
     readonly onOpenRequestQueue: () => void;
+    readonly onExportOfflinePack?: () => void;
+    readonly exportOfflinePackLoading?: boolean;
+    readonly onOpenOfflineLlmSettings?: () => void;
+    readonly libraryLinkTo?: string;
+    readonly libraryLabel?: string;
+    readonly onDownloadOfflineLibraryZip?: () => void;
 }
 
 interface ReaderViewToggleButtonProps {
@@ -133,6 +139,7 @@ function CollapsedToolbar({
     requestCount,
     pendingRequestCount,
     onOpenRequestQueue,
+    onOpenOfflineLlmSettings,
 }: Pick<ReaderToolbarProps,
     | 'page'
     | 'totalPages'
@@ -146,6 +153,7 @@ function CollapsedToolbar({
     | 'requestCount'
     | 'pendingRequestCount'
     | 'onOpenRequestQueue'
+    | 'onOpenOfflineLlmSettings'
 >) {
     return (
         <div className="bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-2 flex items-center justify-between gap-3 sticky top-0 z-10">
@@ -174,6 +182,17 @@ function CollapsedToolbar({
                     pendingRequestCount={pendingRequestCount}
                     onOpenRequestQueue={onOpenRequestQueue}
                 />
+
+                {onOpenOfflineLlmSettings && (
+                    <button
+                        type="button"
+                        onClick={onOpenOfflineLlmSettings}
+                        className={`${toolbarCtrlClass} border-slate-200 bg-white text-slate-600 hover:bg-slate-50`}
+                        aria-label="Offline LLM API settings"
+                    >
+                        <KeyRound size={16} className="shrink-0" />
+                    </button>
+                )}
 
                 <button
                     onClick={onToggleToolbar}
@@ -213,6 +232,12 @@ function ExpandedToolbar({
     requestCount,
     pendingRequestCount,
     onOpenRequestQueue,
+    onExportOfflinePack,
+    exportOfflinePackLoading,
+    onOpenOfflineLlmSettings,
+    libraryLinkTo,
+    libraryLabel,
+    onDownloadOfflineLibraryZip,
 }: ReaderToolbarProps) {
     return (
         <div className="bg-white/80 backdrop-blur-md border-b border-slate-200 px-3 sm:px-4 py-2 flex flex-nowrap items-center justify-between gap-3 sticky top-0 z-10">
@@ -224,10 +249,10 @@ function ExpandedToolbar({
                     />
                 )}
                 <Link
-                    to={ROUTES.HOME}
+                    to={libraryLinkTo ?? ROUTES.HOME}
                     className="hidden sm:inline-flex items-center justify-center gap-1.5 h-9 shrink-0 text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors bg-slate-50 hover:bg-slate-100 px-3 rounded-lg border border-transparent hover:border-slate-200 whitespace-nowrap"
                 >
-                    <ArrowLeft size={16} className="shrink-0" /> Library
+                    <ArrowLeft size={16} className="shrink-0" /> {libraryLabel ?? 'Library'}
                 </Link>
 
                 <div className="h-5 w-px shrink-0 bg-slate-200 hidden sm:block" aria-hidden />
@@ -315,6 +340,35 @@ function ExpandedToolbar({
                         <ChevronRight size={18} />
                     </button>
                 </div>
+                {(onExportOfflinePack || onDownloadOfflineLibraryZip) && (
+                    <button
+                        type="button"
+                        onClick={onExportOfflinePack ?? onDownloadOfflineLibraryZip}
+                        disabled={exportOfflinePackLoading}
+                        className={`${toolbarCtrlClass} border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-50 gap-1`}
+                        aria-label={onDownloadOfflineLibraryZip ? 'Download saved pack as ZIP' : 'Download offline pack'}
+                    >
+                        {exportOfflinePackLoading ? (
+                            <Loader2 size={16} className="shrink-0 animate-spin" />
+                        ) : (
+                            <Download size={16} className="shrink-0" />
+                        )}
+                        <span className="hidden xl:inline">
+                            {onDownloadOfflineLibraryZip ? 'Save ZIP' : 'Export pack'}
+                        </span>
+                    </button>
+                )}
+                {onOpenOfflineLlmSettings && (
+                    <button
+                        type="button"
+                        onClick={onOpenOfflineLlmSettings}
+                        className={`${toolbarCtrlClass} border-slate-200 bg-white text-slate-600 hover:bg-slate-50`}
+                        aria-label="Offline LLM API settings"
+                    >
+                        <KeyRound size={16} className="shrink-0" />
+                        <span className="hidden xl:inline">API</span>
+                    </button>
+                )}
                 <ReaderViewToggleButton
                     readerViewMode={readerViewMode}
                     onToggleReaderView={onToggleReaderView}
