@@ -66,17 +66,23 @@ function remapChatResponse(
     };
 }
 
-/**
- * Fetches all reader-facing data for a PDF and returns a ZIP blob (manifest.json + book.json).
- */
-export async function buildOfflineBundleZip(pdfId: string): Promise<Blob> {
+export interface OfflineBundlePayload {
+    manifest: OfflineBundleManifest;
+    book: OfflineBookPayload;
+}
+
+/** Build manifest + book (single API pass). Use for ZIP download and/or IndexedDB save. */
+export async function buildOfflineBundlePayload(pdfId: string): Promise<OfflineBundlePayload> {
     const [pdfRaw, chaptersRaw] = await Promise.all([fetchPdf(pdfId), fetchChapters(pdfId)]);
     const sorted = [...chaptersRaw].sort((a, b) => a.startPage - b.startPage || a.id - b.id);
     const chapterMap = new Map<number, number>();
     sorted.forEach((ch, i) => chapterMap.set(ch.id, i + 1));
 
     const newChapters: Chapter[] = sorted.map((ch, i) => ({
-        ...ch,
+        title: ch.title,
+        startPage: ch.startPage,
+        endPage: ch.endPage,
+        sourceChapterId: ch.id,
         id: i + 1,
         pdfId: BUNDLE_PDF_ID,
     }));
@@ -100,6 +106,7 @@ export async function buildOfflineBundleZip(pdfId: string): Promise<Blob> {
                 sentenceIndex: s.sentenceIndex,
                 pdfId: BUNDLE_PDF_ID,
                 chapterId,
+                sourceSentenceId: s.id,
             });
         }
         sentencesByPage[page] = remapped;
@@ -185,11 +192,22 @@ export async function buildOfflineBundleZip(pdfId: string): Promise<Blob> {
         sourcePdfTitle: pdfRaw.title,
     };
 
-    const zipObj: Record<string, Uint8Array> = {
-        'manifest.json': strToU8(JSON.stringify(manifest)),
-        'book.json': strToU8(JSON.stringify(book)),
-    };
+    return { manifest, book };
+}
 
+export function offlineBundlePayloadToZipBlob(payload: OfflineBundlePayload): Blob {
+    const zipObj: Record<string, Uint8Array> = {
+        'manifest.json': strToU8(JSON.stringify(payload.manifest)),
+        'book.json': strToU8(JSON.stringify(payload.book)),
+    };
     const zipped = zipSync(zipObj, { level: 6 });
     return new Blob([new Uint8Array(zipped)], { type: 'application/zip' });
+}
+
+/**
+ * Fetches all reader-facing data for a PDF and returns a ZIP blob (manifest.json + book.json).
+ */
+export async function buildOfflineBundleZip(pdfId: string): Promise<Blob> {
+    const payload = await buildOfflineBundlePayload(pdfId);
+    return offlineBundlePayloadToZipBlob(payload);
 }

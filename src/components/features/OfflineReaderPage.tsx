@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { BookOpen, Trash2, Upload, ArrowRight } from 'lucide-react';
+import { BookOpen, Trash2, Upload, ArrowRight, RefreshCw } from 'lucide-react';
 import { OfflineReaderSessionProvider } from '@/context/OfflineReaderSessionProvider';
 import {
     getOfflineBookRecord,
     listOfflineBookRecordsSorted,
+    mergeOfflineRecordWithNewPayload,
+    MergeOfflineBookError,
     parseOfflineBundleZip,
     putOfflineBookRecord,
     deleteOfflineBookRecord,
@@ -120,6 +122,8 @@ export default function OfflineLibraryPage() {
     const [error, setError] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
     const { toast, showToast, dismissToast } = useToast();
+    const updateZipInputRef = useRef<HTMLInputElement>(null);
+    const pendingUpdateExportIdRef = useRef<string | null>(null);
 
     const refresh = useCallback(async () => {
         try {
@@ -175,6 +179,46 @@ export default function OfflineLibraryPage() {
         [navigate],
     );
 
+    const startUpdateFromZip = useCallback((exportId: string) => {
+        pendingUpdateExportIdRef.current = exportId;
+        updateZipInputRef.current?.click();
+    }, []);
+
+    const onUpdateZipPicked = useCallback(
+        async (file: File | null) => {
+            const targetExportId = pendingUpdateExportIdRef.current;
+            pendingUpdateExportIdRef.current = null;
+            if (!file || !targetExportId) return;
+            setError(null);
+            setBusy(true);
+            try {
+                const buf = await file.arrayBuffer();
+                const existing = await getOfflineBookRecord(targetExportId);
+                if (!existing) {
+                    setError('That library entry no longer exists.');
+                    return;
+                }
+                const parsed = parseOfflineBundleZip(buf);
+                const merged = mergeOfflineRecordWithNewPayload(existing, {
+                    manifest: parsed.manifest,
+                    book: parsed.book,
+                });
+                await putOfflineBookRecord(merged);
+                showToast('Offline book updated. Matching chats were kept.', 'success');
+                await refresh();
+            } catch (e) {
+                if (e instanceof MergeOfflineBookError) {
+                    showToast(e.message, 'error');
+                } else {
+                    setError(e instanceof Error ? e.message : 'Could not update from pack.');
+                }
+            } finally {
+                setBusy(false);
+            }
+        },
+        [refresh, showToast],
+    );
+
     return (
         <div className="flex-1 min-h-0 overflow-y-auto">
             {toast && (
@@ -189,17 +233,32 @@ export default function OfflineLibraryPage() {
                             saved automatically.
                         </p>
                     </div>
-                    <label className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-900 text-white text-sm font-medium cursor-pointer hover:bg-slate-800 transition-colors shrink-0">
-                        <Upload size={18} />
-                        {busy ? 'Importing…' : 'Import ZIP'}
+                    <div className="flex flex-wrap items-center gap-2 shrink-0 justify-end">
+                        <label className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-900 text-white text-sm font-medium cursor-pointer hover:bg-slate-800 transition-colors">
+                            <Upload size={18} />
+                            {busy ? 'Working…' : 'Import ZIP'}
+                            <input
+                                type="file"
+                                accept=".zip,application/zip"
+                                className="sr-only"
+                                disabled={busy}
+                                onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
+                            />
+                        </label>
                         <input
+                            ref={updateZipInputRef}
                             type="file"
                             accept=".zip,application/zip"
                             className="sr-only"
+                            aria-hidden
                             disabled={busy}
-                            onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
+                            onChange={(e) => {
+                                const f = e.target.files?.[0] ?? null;
+                                e.target.value = '';
+                                void onUpdateZipPicked(f);
+                            }}
                         />
-                    </label>
+                    </div>
                 </div>
 
                 {error && (
@@ -244,6 +303,16 @@ export default function OfflineLibraryPage() {
                                         >
                                             Open
                                             <ArrowRight size={16} />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => startUpdateFromZip(rec.exportId)}
+                                            disabled={busy}
+                                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 text-sm font-medium hover:bg-slate-50 disabled:opacity-50"
+                                            title="Merge a newer study pack ZIP from the online reader"
+                                        >
+                                            <RefreshCw size={16} />
+                                            Update
                                         </button>
                                         <button
                                             type="button"

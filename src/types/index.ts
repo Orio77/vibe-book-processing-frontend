@@ -13,6 +13,8 @@ export interface Chapter {
     startPage: number;
     endPage: number;
     pdfId: number;
+    /** Server chapter id from the API (offline packs v2+); used to merge after re-export. */
+    sourceChapterId?: number;
 }
 
 export interface Sentence {
@@ -21,6 +23,8 @@ export interface Sentence {
     sentenceIndex: number;
     pdfId: number;
     chapterId: number;
+    /** Server sentence id from the API (offline packs v2+); used to merge after re-export. */
+    sourceSentenceId?: number;
 }
 
 export interface ChapterPageRange {

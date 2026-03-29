@@ -51,3 +51,8 @@ export async function listOfflineBookRecordsSorted(): Promise<OfflineBookRecord[
     const all = await db.getAll(STORE);
     return all.sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
 }
+
+export async function listOfflineBookRecordsForSourcePdf(sourcePdfId: number): Promise<OfflineBookRecord[]> {
+    const all = await listOfflineBookRecordsSorted();
+    return all.filter((r) => r.manifest.sourcePdfId === sourcePdfId);
+}

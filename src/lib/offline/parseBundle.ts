@@ -10,11 +10,17 @@ import type {
 } from '@/types';
 import {
     OFFLINE_BUNDLE_SCHEMA_VERSION,
+    OFFLINE_BUNDLE_SCHEMA_VERSION_LEGACY,
     type OfflineBookPayload,
     type OfflineBundleManifest,
     type ParsedOfflineBundle,
 } from '@/types/offlineBundle';
 import { buildParsedBundleFromBook } from './bundleFromBook';
+
+const SUPPORTED_OFFLINE_SCHEMA_VERSIONS = new Set<number>([
+    OFFLINE_BUNDLE_SCHEMA_VERSION,
+    OFFLINE_BUNDLE_SCHEMA_VERSION_LEGACY,
+]);
 
 const MANIFEST = 'manifest.json';
 const BOOK = 'book.json';
@@ -68,9 +74,9 @@ export function parseOfflineBundleZip(arrayBuffer: ArrayBuffer): ParsedOfflineBu
     }
 
     const manifest = parseJson<OfflineBundleManifest>(strFromU8(manifestBytes), MANIFEST);
-    if (manifest.schemaVersion !== OFFLINE_BUNDLE_SCHEMA_VERSION) {
+    if (!SUPPORTED_OFFLINE_SCHEMA_VERSIONS.has(manifest.schemaVersion)) {
         throw new Error(
-            `Unsupported bundle version ${manifest.schemaVersion}. This app supports ${OFFLINE_BUNDLE_SCHEMA_VERSION}.`,
+            `Unsupported bundle version ${manifest.schemaVersion}. This app supports versions ${[...SUPPORTED_OFFLINE_SCHEMA_VERSIONS].join(', ')}.`,
         );
     }
 

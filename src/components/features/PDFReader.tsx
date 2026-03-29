@@ -1,11 +1,26 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import { ReaderSessionProvider, useReaderSession } from '@/context/ReaderSessionContext';
-import { buildOfflineBundleZip, exportOfflineRecordToZipBlob } from '@/lib/offline';
+import {
+    buildOfflineBundlePayload,
+    exportOfflineRecordToZipBlob,
+    getOfflineBookRecord,
+    listOfflineBookRecordsForSourcePdf,
+    mergeOfflineRecordWithNewPayload,
+    MergeOfflineBookError,
+    offlineBundlePayloadToZipBlob,
+    putOfflineBookRecord,
+    saveOfflineBundleToLibrary,
+} from '@/lib/offline';
 import { ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react';
 import { usePdfReader, useReaderIdeas, useReaderChat, useReaderSummary, useSentenceMarking, useReaderRequests, useReaderViewSettings, useToast } from '@/hooks';
 import { LoadingSpinner, Modal, Toast } from '@/components/ui';
 import { OfflineLlmSettingsModal } from '@/components/features/OfflineLlmSettingsModal';
+import {
+    ExportOfflinePackModal,
+    type OfflineExportConfirmOptions,
+    type OfflineLibraryUpdateTarget,
+} from '@/components/features/ExportOfflinePackModal';
 import { ReaderSidebar, ReaderToolbar, PageSkeleton, BlankPage, RequestQueuePanel } from './reader';
 import { SummaryViewer } from './SummaryViewer';
 import { IdeaArgumentsModal } from './IdeaArgumentsModal';
@@ -70,6 +85,8 @@ export function PDFReaderShell() {
     const [requestQueueOpen, setRequestQueueOpen] = useState(false);
     const [llmSettingsOpen, setLlmSettingsOpen] = useState(false);
     const [exportingPack, setExportingPack] = useState(false);
+    const [exportPackModalOpen, setExportPackModalOpen] = useState(false);
+    const [offlineLibraryUpdateTargets, setOfflineLibraryUpdateTargets] = useState<OfflineLibraryUpdateTarget[]>([]);
     const [isCoarsePointer, setIsCoarsePointer] = useState(false);
     const [pullIndicator, setPullIndicator] = useState<PullIndicatorState>({
         active: false,
@@ -173,6 +190,26 @@ export function PDFReaderShell() {
     const { toast, showToast, dismissToast } = useToast();
     const completedRequestToastIdsRef = useRef<Set<string>>(new Set());
 
+    useEffect(() => {
+        if (session.mode !== 'online' || pdfInfo == null) {
+            setOfflineLibraryUpdateTargets([]);
+            return;
+        }
+        let cancelled = false;
+        listOfflineBookRecordsForSourcePdf(pdfInfo.id).then((rows) => {
+            if (cancelled) return;
+            setOfflineLibraryUpdateTargets(
+                rows.map((r) => ({
+                    exportId: r.exportId,
+                    label: (r.manifest.sourcePdfTitle ?? r.book.pdf.title ?? 'Offline copy').trim() || 'Offline copy',
+                })),
+            );
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [session.mode, pdfInfo?.id]);
+
     // ── Derived handlers ──
 
     const handleJumpToChapter = useCallback((ch: { startPage: number }) => {
@@ -240,26 +277,87 @@ export function PDFReaderShell() {
         setShowQueryBox(false);
     }, [handleSendQuery, queryText, setQueryText, setShowQueryBox]);
 
-    const handleExportOfflinePack = useCallback(async () => {
-        if (session.mode !== 'online') return;
-        setExportingPack(true);
-        try {
-            const blob = await buildOfflineBundleZip(session.pdfId);
-            const safeTitle = (pdfInfo?.title ?? 'book').replace(/[^\w\-.,()]+/g, '_').slice(0, 80);
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${safeTitle}-offline-pack.zip`;
-            a.click();
-            URL.revokeObjectURL(url);
-            showToast('Offline pack downloaded.', 'success');
-        } catch (error) {
-            console.error(error);
-            showToast(getApiErrorMessage(error, 'Export failed.'), 'error');
-        } finally {
-            setExportingPack(false);
-        }
-    }, [session, pdfInfo?.title, showToast]);
+    const handleConfirmOfflineExport = useCallback(
+        async (options: OfflineExportConfirmOptions) => {
+            if (session.mode !== 'online') return;
+            if (!options.downloadZip && !options.saveToLibrary) return;
+            setExportingPack(true);
+            try {
+                const payload = await buildOfflineBundlePayload(session.pdfId);
+                const safeTitle = (pdfInfo?.title ?? 'book').replace(/[^\w\-.,()]+/g, '_').slice(0, 80);
+                const updatedExisting = Boolean(options.saveToLibrary && options.updateLibraryExportId);
+
+                let downloadDone = false;
+                if (options.downloadZip) {
+                    const blob = offlineBundlePayloadToZipBlob(payload);
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${safeTitle}-offline-pack.zip`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    downloadDone = true;
+                }
+
+                let saveDone = false;
+                if (options.saveToLibrary) {
+                    try {
+                        if (options.updateLibraryExportId) {
+                            const existing = await getOfflineBookRecord(options.updateLibraryExportId);
+                            if (!existing) {
+                                showToast(
+                                    'That offline library entry is gone. Pick another or add a new entry.',
+                                    'error',
+                                );
+                            } else {
+                                const merged = mergeOfflineRecordWithNewPayload(existing, payload);
+                                await putOfflineBookRecord(merged);
+                                saveDone = true;
+                            }
+                        } else {
+                            await saveOfflineBundleToLibrary(payload.manifest, payload.book, page);
+                            saveDone = true;
+                        }
+                    } catch (saveErr) {
+                        if (saveErr instanceof MergeOfflineBookError) {
+                            showToast(saveErr.message, 'error');
+                        } else {
+                            const name = saveErr instanceof DOMException ? saveErr.name : saveErr instanceof Error ? saveErr.name : '';
+                            const msg =
+                                name === 'QuotaExceededError'
+                                    ? 'Storage is full. Could not save to offline library.'
+                                    : saveErr instanceof Error
+                                        ? saveErr.message
+                                        : 'Could not save to offline library.';
+                            showToast(msg, 'error');
+                        }
+                    }
+                }
+
+                if (downloadDone && saveDone && updatedExisting) {
+                    showToast('Study pack downloaded and offline library updated.', 'success');
+                } else if (downloadDone && saveDone) {
+                    showToast('Study pack downloaded and saved to your offline library.', 'success');
+                } else if (downloadDone && options.saveToLibrary && !saveDone) {
+                    showToast('Pack downloaded, but saving to the offline library failed.', 'error');
+                } else if (downloadDone) {
+                    showToast('Offline pack downloaded.', 'success');
+                } else if (saveDone && updatedExisting) {
+                    showToast('Offline library updated with the latest pack.', 'success');
+                } else if (saveDone) {
+                    showToast('Saved to your offline library.', 'success');
+                }
+
+                setExportPackModalOpen(false);
+            } catch (error) {
+                console.error(error);
+                showToast(getApiErrorMessage(error, 'Export failed.'), 'error');
+            } finally {
+                setExportingPack(false);
+            }
+        },
+        [session, pdfInfo?.title, page, showToast],
+    );
 
     const handleDownloadOfflineLibraryZip = useCallback(async () => {
         if (session.mode !== 'offline') return;
@@ -827,7 +925,7 @@ export function PDFReaderShell() {
                                 requestCount={requests.length}
                                 pendingRequestCount={pendingRequestCount}
                                 onOpenRequestQueue={() => setRequestQueueOpen(true)}
-                                onExportOfflinePack={session.mode === 'online' ? handleExportOfflinePack : undefined}
+                                onExportOfflinePack={session.mode === 'online' ? () => setExportPackModalOpen(true) : undefined}
                                 exportOfflinePackLoading={exportingPack}
                                 onOpenOfflineLlmSettings={session.mode === 'offline' ? () => setLlmSettingsOpen(true) : undefined}
                                 libraryLinkTo={session.mode === 'offline' ? ROUTES.READ_OFFLINE : undefined}
@@ -956,6 +1054,14 @@ export function PDFReaderShell() {
                             chatResponse={selectedChatResponse}
                             onDelete={handleDeleteChatResponse}
                             onSave={handleSaveChatResponse}
+                        />
+
+                        <ExportOfflinePackModal
+                            isOpen={exportPackModalOpen}
+                            onClose={() => setExportPackModalOpen(false)}
+                            onConfirm={handleConfirmOfflineExport}
+                            busy={exportingPack}
+                            libraryUpdateTargets={offlineLibraryUpdateTargets}
                         />
 
                         <OfflineLlmSettingsModal

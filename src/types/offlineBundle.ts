@@ -9,10 +9,17 @@ import type {
     Sentence,
 } from '@/types';
 
-export const OFFLINE_BUNDLE_SCHEMA_VERSION = 1 as const;
+/** Current export format (stable source ids for merge-after-re-export). */
+export const OFFLINE_BUNDLE_SCHEMA_VERSION = 2 as const;
+/** Legacy packs without sourceSentenceId / sourceChapterId. */
+export const OFFLINE_BUNDLE_SCHEMA_VERSION_LEGACY = 1 as const;
+
+export type OfflineBundleSchemaVersion =
+    | typeof OFFLINE_BUNDLE_SCHEMA_VERSION
+    | typeof OFFLINE_BUNDLE_SCHEMA_VERSION_LEGACY;
 
 export interface OfflineBundleManifest {
-    readonly schemaVersion: typeof OFFLINE_BUNDLE_SCHEMA_VERSION;
+    readonly schemaVersion: OfflineBundleSchemaVersion;
     readonly exportId: string;
     readonly exportedAt: string;
     readonly appVersion: string;

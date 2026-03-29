@@ -8,37 +8,71 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
         : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
     }`;
 
-export function NavBar() {
+const mobileTabClass = ({ isActive }: { isActive: boolean }) =>
+    `flex flex-col items-center justify-center gap-0.5 flex-1 min-h-14 max-w-[34%] px-1 text-[11px] font-medium transition-colors touch-manipulation active:opacity-80 ${isActive
+        ? 'text-blue-700'
+        : 'text-slate-600'
+    }`;
+
+export interface NavBarProps {
+    readonly hideMobileTabs?: boolean;
+}
+
+export function NavBar({ hideMobileTabs = false }: NavBarProps) {
     return (
-        <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200 shadow-sm">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex justify-between h-16">
-                    <div className="flex items-center gap-8">
-                        <div className="flex-shrink-0 flex items-center gap-2">
-                            <div className="bg-blue-600 p-1.5 rounded-lg">
-                                <BookOpen className="w-5 h-5 text-white" />
+        <>
+            <nav className="sticky top-0 z-50 border-b border-slate-200 bg-white/80 pt-[env(safe-area-inset-top,0px)] shadow-sm backdrop-blur-md">
+                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                    <div className="flex h-16 justify-between">
+                        <div className="flex items-center gap-4 sm:gap-8">
+                            <div className="flex flex-shrink-0 items-center gap-2">
+                                <div className="rounded-lg bg-blue-600 p-1.5">
+                                    <BookOpen className="h-5 w-5 text-white" />
+                                </div>
+                                <span className="text-lg font-bold tracking-tight text-slate-900 sm:text-xl">
+                                    BookProcessing
+                                </span>
                             </div>
-                            <span className="font-bold text-xl tracking-tight text-slate-900">
-                                BookProcessing
-                            </span>
-                        </div>
-                        <div className="hidden sm:flex sm:space-x-2">
-                            <NavLink to={ROUTES.HOME} end className={navLinkClass}>
-                                <Home className="w-4 h-4 mr-2" />
-                                Library
-                            </NavLink>
-                            <NavLink to={ROUTES.UPLOAD} className={navLinkClass}>
-                                <Upload className="w-4 h-4 mr-2" />
-                                Upload PDF
-                            </NavLink>
-                            <NavLink to={ROUTES.READ_OFFLINE} className={navLinkClass}>
-                                <FolderOpen className="w-4 h-4 mr-2" />
-                                Offline library
-                            </NavLink>
+                            <div className="hidden sm:flex sm:space-x-2 md:space-x-3">
+                                <NavLink to={ROUTES.HOME} end className={navLinkClass}>
+                                    <Home className="mr-2 h-4 w-4" />
+                                    Library
+                                </NavLink>
+                                <NavLink to={ROUTES.UPLOAD} className={navLinkClass}>
+                                    <Upload className="mr-2 h-4 w-4" />
+                                    Upload PDF
+                                </NavLink>
+                                <NavLink to={ROUTES.READ_OFFLINE} className={navLinkClass}>
+                                    <FolderOpen className="mr-2 h-4 w-4" />
+                                    Offline library
+                                </NavLink>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </nav>
+            </nav>
+
+            {!hideMobileTabs && (
+                <nav
+                    className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-4px_24px_rgba(15,23,42,0.06)] backdrop-blur-md sm:hidden"
+                    aria-label="Primary"
+                >
+                    <div className="mx-auto flex max-w-lg items-stretch justify-around">
+                        <NavLink to={ROUTES.HOME} end className={mobileTabClass}>
+                            <Home className="h-6 w-6 shrink-0" aria-hidden />
+                            Library
+                        </NavLink>
+                        <NavLink to={ROUTES.UPLOAD} className={mobileTabClass}>
+                            <Upload className="h-6 w-6 shrink-0" aria-hidden />
+                            Upload
+                        </NavLink>
+                        <NavLink to={ROUTES.READ_OFFLINE} className={mobileTabClass}>
+                            <FolderOpen className="h-6 w-6 shrink-0" aria-hidden />
+                            Offline
+                        </NavLink>
+                    </div>
+                </nav>
+            )}
+        </>
     );
 }

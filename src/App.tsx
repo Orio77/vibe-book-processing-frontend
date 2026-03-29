@@ -92,14 +92,14 @@ function AppShell({
     const isReaderRoute = location.pathname.startsWith('/read/');
 
     return (
-        <div className="min-h-screen flex flex-col bg-slate-50 font-sans text-slate-800 selection:bg-blue-200 selection:text-blue-900">
-            <NavBar />
+        <div className="flex min-h-[100dvh] min-h-screen flex-col bg-slate-50 font-sans text-slate-800 selection:bg-blue-200 selection:text-blue-900">
+            <NavBar hideMobileTabs={isReaderRoute} />
 
             <main
                 className={
                     isReaderRoute
-                        ? 'flex flex-1 min-h-0 flex-col w-full overflow-hidden'
-                        : 'max-w-7xl mx-auto w-full py-8 px-4 sm:px-6 lg:px-8 flex-1 min-h-0'
+                        ? 'flex min-h-0 w-full flex-1 flex-col overflow-hidden'
+                        : 'mx-auto w-full max-w-7xl flex-1 min-h-0 px-4 pb-[calc(2rem+3.5rem+env(safe-area-inset-bottom,0px))] pt-8 sm:px-6 sm:pb-8 sm:pt-8 lg:px-8'
                 }
             >
                 <Suspense fallback={<LoadingSpinner className="h-64" />}>
