@@ -52,7 +52,7 @@ export interface ReaderRequest {
     id: string;
     chapterId: number;
     jobId?: number;
-    type: 'explain' | 'query' | 'summary' | 'idea-explain' | 'idea-extract';
+    type: 'explain' | 'query' | 'summary' | 'idea-explain' | 'idea-extract' | 'ideas-explain';
     query?: string;
     sentences: Sentence[];
     timestamp: Date;
@@ -315,6 +315,23 @@ export function useReaderRequests(
         return requestId;
     }, []);
 
+    const registerIdeasExplanationQueueJob = useCallback((chapterId: number, jobId: number) => {
+        const requestId = crypto.randomUUID();
+        const ideasExplanationRequest: ReaderRequest = {
+            id: requestId,
+            chapterId,
+            jobId,
+            type: 'ideas-explain',
+            query: 'Generate explanations for all key ideas',
+            sentences: [],
+            timestamp: new Date(),
+            status: 'pending',
+        };
+
+        setRequests(prev => [...prev, ideasExplanationRequest]);
+        return requestId;
+    }, []);
+
     const resolveIdeaExtractionQueueJob = useCallback(
         (jobId: number, status: 'success' | 'error', response: string) => {
             const update = { status, response };
@@ -332,9 +349,26 @@ export function useReaderRequests(
         [],
     );
 
+    const resolveIdeasExplanationQueueJob = useCallback(
+        (jobId: number, status: 'success' | 'error', response: string) => {
+            const update = { status, response };
+            setRequests(prev => prev.map((request) => (
+                request.type === 'ideas-explain' && request.jobId === jobId
+                    ? { ...request, ...update }
+                    : request
+            )));
+            setSelectedRequest(prev => (
+                prev?.type === 'ideas-explain' && prev.jobId === jobId
+                    ? { ...prev, ...update }
+                    : prev
+            ));
+        },
+        [],
+    );
+
     const handleJobCompleted = useCallback(async (jobId: number) => {
         const matchingRequest = requestsRef.current.find(
-            (request) => request.type !== 'summary' && request.type !== 'idea-explain' && request.type !== 'idea-extract' && request.jobId === jobId && request.status === 'pending',
+            (request) => request.type !== 'summary' && request.type !== 'idea-explain' && request.type !== 'idea-extract' && request.type !== 'ideas-explain' && request.jobId === jobId && request.status === 'pending',
         );
         if (!matchingRequest || processingJobIdsRef.current.has(jobId)) {
             return;
@@ -381,6 +415,8 @@ export function useReaderRequests(
         resolveIdeaExplanationQueueJob,
         registerIdeaExtractionQueueJob,
         resolveIdeaExtractionQueueJob,
+        registerIdeasExplanationQueueJob,
+        resolveIdeasExplanationQueueJob,
         openRequest,
         closeRequestModal,
     } as const;

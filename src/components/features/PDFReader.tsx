@@ -183,6 +183,8 @@ export function PDFReaderShell() {
         resolveIdeaExplanationQueueJob,
         registerIdeaExtractionQueueJob,
         resolveIdeaExtractionQueueJob,
+        registerIdeasExplanationQueueJob,
+        resolveIdeasExplanationQueueJob,
         openRequest,
         closeRequestModal,
     } = useReaderRequests(activeChapter, markedSentences, exitMarkingMode, pdfInfo?.title);
@@ -241,18 +243,20 @@ export function PDFReaderShell() {
 
     const pendingRequestCount = requests.filter((request) => request.status === 'pending').length;
 
-    const getRequestSuccessMessage = useCallback((requestType: 'query' | 'explain' | 'summary' | 'idea-explain' | 'idea-extract') => {
+    const getRequestSuccessMessage = useCallback((requestType: 'query' | 'explain' | 'summary' | 'idea-explain' | 'idea-extract' | 'ideas-explain') => {
         if (requestType === 'summary') return 'Chapter summary is ready.';
         if (requestType === 'idea-explain') return 'Idea explanation is ready.';
         if (requestType === 'idea-extract') return 'Idea extraction is ready.';
+        if (requestType === 'ideas-explain') return 'Chapter idea explanations are ready.';
         if (requestType === 'explain') return 'Explanation is ready.';
         return 'Chat response is ready.';
     }, []);
 
-    const getRequestErrorMessage = useCallback((requestType: 'query' | 'explain' | 'summary' | 'idea-explain' | 'idea-extract') => {
+    const getRequestErrorMessage = useCallback((requestType: 'query' | 'explain' | 'summary' | 'idea-explain' | 'idea-extract' | 'ideas-explain') => {
         if (requestType === 'summary') return 'Chapter summary request failed.';
         if (requestType === 'idea-explain') return 'Idea explanation request failed.';
         if (requestType === 'idea-extract') return 'Idea extraction request failed.';
+        if (requestType === 'ideas-explain') return 'Chapter idea explanations request failed.';
         if (requestType === 'explain') return 'Explanation request failed.';
         return 'Chat request failed.';
     }, []);
@@ -261,6 +265,7 @@ export function PDFReaderShell() {
         if (selectedRequest?.type === 'summary') return 'Chapter Summary';
         if (selectedRequest?.type === 'idea-explain') return 'Idea Explanation';
         if (selectedRequest?.type === 'idea-extract') return 'Idea Extraction';
+        if (selectedRequest?.type === 'ideas-explain') return 'Idea Explanations';
         if (selectedRequest?.type === 'explain') return 'Explanation';
         return 'Chat Response';
     }, [selectedRequest?.type]);
@@ -414,6 +419,14 @@ export function PDFReaderShell() {
     const handleResolveIdeaExtractionQueueJob = useCallback((jobId: number, status: 'success' | 'error', response: string) => {
         resolveIdeaExtractionQueueJob(jobId, status, response);
     }, [resolveIdeaExtractionQueueJob]);
+
+    const handleQueueIdeasExplanation = useCallback((chapterId: number, jobId: number) => {
+        registerIdeasExplanationQueueJob(chapterId, jobId);
+    }, [registerIdeasExplanationQueueJob]);
+
+    const handleResolveIdeasExplanationQueueJob = useCallback((jobId: number, status: 'success' | 'error', response: string) => {
+        resolveIdeasExplanationQueueJob(jobId, status, response);
+    }, [resolveIdeasExplanationQueueJob]);
 
     useEffect(() => {
         requests.forEach((request) => {
@@ -898,6 +911,8 @@ export function PDFReaderShell() {
                             onResolveSummaryQueueJob={handleResolveSummaryQueueJob}
                             onQueueIdeaExtraction={handleQueueIdeaExtraction}
                             onResolveIdeaExtractionQueueJob={handleResolveIdeaExtractionQueueJob}
+                            onQueueIdeasExplanation={handleQueueIdeasExplanation}
+                            onResolveIdeasExplanationQueueJob={handleResolveIdeasExplanationQueueJob}
                         />
 
                         {/* Main Content Area */}

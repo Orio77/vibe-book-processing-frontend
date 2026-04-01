@@ -16,6 +16,8 @@ interface ReaderSidebarProps {
     readonly onResolveSummaryQueueJob?: (jobId: number, status: 'success' | 'error', response: string) => void;
     readonly onQueueIdeaExtraction?: (chapterId: number, jobId: number) => void;
     readonly onResolveIdeaExtractionQueueJob?: (jobId: number, status: 'success' | 'error', response: string) => void;
+    readonly onQueueIdeasExplanation?: (chapterId: number, jobId: number) => void;
+    readonly onResolveIdeasExplanationQueueJob?: (jobId: number, status: 'success' | 'error', response: string) => void;
 }
 
 export function ReaderSidebar({
@@ -31,6 +33,8 @@ export function ReaderSidebar({
     onResolveSummaryQueueJob,
     onQueueIdeaExtraction,
     onResolveIdeaExtractionQueueJob,
+    onQueueIdeasExplanation,
+    onResolveIdeasExplanationQueueJob,
 }: ReaderSidebarProps) {
     return (
         <div
@@ -71,6 +75,8 @@ export function ReaderSidebar({
                                     onResolveSummaryQueueJob={onResolveSummaryQueueJob}
                                     onQueueIdeaExtraction={onQueueIdeaExtraction}
                                     onResolveIdeaExtractionQueueJob={onResolveIdeaExtractionQueueJob}
+                                    onQueueIdeasExplanation={onQueueIdeasExplanation}
+                                    onResolveIdeasExplanationQueueJob={onResolveIdeasExplanationQueueJob}
                                 />
                             </div>
                         )}

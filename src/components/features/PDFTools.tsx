@@ -13,6 +13,7 @@ import {
     getSummaryByChapterId,
     createBookSummary,
     markKeyIdeas,
+    createIdeasExplanations,
     getApiErrorMessage,
 } from '@/lib/api';
 import type { ChapterSummary } from '@/types';
@@ -29,6 +30,8 @@ interface PDFToolsProps {
     onResolveSummaryQueueJob?: (jobId: number, status: 'success' | 'error', response: string) => void;
     onQueueIdeaExtraction?: (chapterId: number, jobId: number) => void;
     onResolveIdeaExtractionQueueJob?: (jobId: number, status: 'success' | 'error', response: string) => void;
+    onQueueIdeasExplanation?: (chapterId: number, jobId: number) => void;
+    onResolveIdeasExplanationQueueJob?: (jobId: number, status: 'success' | 'error', response: string) => void;
 }
 
 const PDFTools: React.FC<PDFToolsProps> = ({
@@ -40,6 +43,8 @@ const PDFTools: React.FC<PDFToolsProps> = ({
     onResolveSummaryQueueJob,
     onQueueIdeaExtraction,
     onResolveIdeaExtractionQueueJob,
+    onQueueIdeasExplanation,
+    onResolveIdeasExplanationQueueJob,
 }) => {
     const [loadingAction, setLoadingAction] = useState<string | null>(null);
     const { toast, showToast, dismissToast } = useToast();
@@ -47,6 +52,8 @@ const PDFTools: React.FC<PDFToolsProps> = ({
     const processingSummaryJobRef = useRef<Set<number>>(new Set());
     const pendingIdeaExtractionJobsRef = useRef<Map<number, number>>(new Map());
     const processingIdeaExtractionJobsRef = useRef<Set<number>>(new Set());
+    const pendingIdeasExplanationJobsRef = useRef<Map<number, number>>(new Map());
+    const processingIdeasExplanationJobsRef = useRef<Set<number>>(new Set());
 
     const runAction = useCallback(
         async (id: string, action: () => Promise<void>, successMsg: string) => {
@@ -146,19 +153,6 @@ const PDFTools: React.FC<PDFToolsProps> = ({
         }
     }, [onResolveIdeaExtractionQueueJob]);
 
-    const handleToolQueueCompletion = useCallback(async (jobId: number) => {
-        if (pendingSummaryJobsRef.current.has(jobId)) {
-            await handleChapterSummaryCompletion(jobId);
-            return;
-        }
-
-        if (pendingIdeaExtractionJobsRef.current.has(jobId)) {
-            await handleIdeaExtractionCompletion(jobId);
-        }
-    }, [handleChapterSummaryCompletion, handleIdeaExtractionCompletion]);
-
-    useJobCompletionSubscription(handleToolQueueCompletion);
-
     const handleBookSummary = () =>
         runAction(
             'book-summary',
@@ -189,6 +183,75 @@ const PDFTools: React.FC<PDFToolsProps> = ({
             setLoadingAction(null);
         }
     };
+
+    const handleIdeasExplanationCompletion = useCallback(async (jobId: number) => {
+        const chapterForJob = pendingIdeasExplanationJobsRef.current.get(jobId);
+        if (chapterForJob == null || processingIdeasExplanationJobsRef.current.has(jobId)) {
+            return;
+        }
+
+        processingIdeasExplanationJobsRef.current.add(jobId);
+
+        try {
+            const job = await fetchQueueJob(jobId);
+
+            if (job.status !== 'COMPLETED') {
+                const errorMessage = job.errorText?.trim() || 'Ideas explanation failed while processing in queue.';
+                onResolveIdeasExplanationQueueJob?.(jobId, 'error', errorMessage);
+                return;
+            }
+
+            onResolveIdeasExplanationQueueJob?.(jobId, 'success', 'Explanations for chapter ideas are ready.');
+        } catch (error) {
+            const errorMessage = getApiErrorMessage(error, 'Failed to resolve ideas explanation completion.');
+            onResolveIdeasExplanationQueueJob?.(jobId, 'error', errorMessage);
+        } finally {
+            pendingIdeasExplanationJobsRef.current.delete(jobId);
+            processingIdeasExplanationJobsRef.current.delete(jobId);
+        }
+    }, [onResolveIdeasExplanationQueueJob]);
+
+    const handleExplainIdeas = async () => {
+        if (!chapterId) return;
+
+        setLoadingAction('ideas-explanation');
+        try {
+            const result = await createIdeasExplanations(chapterId);
+
+            if (result.mode === 'queued') {
+                pendingIdeasExplanationJobsRef.current.set(result.jobId, chapterId);
+                onQueueIdeasExplanation?.(chapterId, result.jobId);
+                showToast('Ideas explanation request queued.', 'success');
+                return;
+            }
+
+            showToast('Explanations for chapter ideas are ready.', 'success');
+        } catch (err) {
+            console.error(err);
+            const errorMessage = getApiErrorMessage(err, 'Error: ideas explanation failed.');
+            showToast(errorMessage, 'error');
+        } finally {
+            setLoadingAction(null);
+        }
+    };
+
+    const handleToolQueueCompletion = useCallback(async (jobId: number) => {
+        if (pendingSummaryJobsRef.current.has(jobId)) {
+            await handleChapterSummaryCompletion(jobId);
+            return;
+        }
+
+        if (pendingIdeaExtractionJobsRef.current.has(jobId)) {
+            await handleIdeaExtractionCompletion(jobId);
+            return;
+        }
+
+        if (pendingIdeasExplanationJobsRef.current.has(jobId)) {
+            await handleIdeasExplanationCompletion(jobId);
+        }
+    }, [handleChapterSummaryCompletion, handleIdeaExtractionCompletion, handleIdeasExplanationCompletion]);
+
+    useJobCompletionSubscription(handleToolQueueCompletion);
 
     return (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -237,6 +300,18 @@ const PDFTools: React.FC<PDFToolsProps> = ({
                         colorClass="amber"
                         bgClass="bg-amber-50 text-amber-600 group-hover:bg-amber-100"
                         hoverClass="hover:bg-amber-50/30"
+                    />
+
+                    <ToolButton
+                        id="ideas-explanation"
+                        icon={Sparkles}
+                        label="Generate Idea Explanations"
+                        onClick={handleExplainIdeas}
+                        disabled={!chapterId}
+                        loadingAction={loadingAction}
+                        colorClass="fuchsia"
+                        bgClass="bg-fuchsia-50 text-fuchsia-600 group-hover:bg-fuchsia-100"
+                        hoverClass="hover:bg-fuchsia-50/30"
                     />
 
                     {/* <ToolButton
@@ -307,12 +382,14 @@ function ToolButton({
         purple: 'hover:border-purple-300',
         amber: 'hover:border-amber-300',
         emerald: 'hover:border-emerald-300',
+        fuchsia: 'hover:border-fuchsia-300',
     };
     const textColorMap: Record<string, string> = {
         blue: 'text-blue-600',
         purple: 'text-purple-600',
         amber: 'text-amber-600',
         emerald: 'text-emerald-600',
+        fuchsia: 'text-fuchsia-600',
     };
 
     const hoverBorder = hoverBorderMap[colorClass] ?? 'hover:border-slate-300';

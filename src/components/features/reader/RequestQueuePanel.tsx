@@ -35,6 +35,10 @@ function RequestTypeIcon({ type }: { readonly type: ReaderRequest['type'] }) {
         return <Sparkles className="w-4 h-4 text-indigo-600" />;
     }
 
+    if (type === 'ideas-explain') {
+        return <Sparkles className="w-4 h-4 text-fuchsia-600" />;
+    }
+
     return <Sparkles className="w-4 h-4 text-blue-600" />;
 }
 
@@ -43,6 +47,7 @@ function getRequestTitle(request: ReaderRequest): string {
     if (request.type === 'summary') return 'Chapter summary request';
     if (request.type === 'idea-extract') return request.query ?? 'Idea extraction request';
     if (request.type === 'idea-explain') return request.query ?? 'Idea explanation request';
+    if (request.type === 'ideas-explain') return request.query ?? 'Ideas explanation request';
     return 'Explanation request';
 }
 
