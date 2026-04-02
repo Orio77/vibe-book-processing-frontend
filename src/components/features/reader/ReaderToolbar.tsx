@@ -240,8 +240,8 @@ function ExpandedToolbar({
     onDownloadOfflineLibraryZip,
 }: ReaderToolbarProps) {
     return (
-        <div className="bg-white/80 backdrop-blur-md border-b border-slate-200 px-3 sm:px-4 py-2 flex flex-nowrap items-center justify-between gap-3 sticky top-0 z-10">
-            <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden" id="reader-toolbar-content">
+        <div className="bg-white/80 backdrop-blur-md border-b border-slate-200 px-2 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-2 sticky top-0 z-50">
+            <div className="flex flex-wrap items-center gap-2 min-w-0 flex-1 overflow-x-auto" id="reader-toolbar-content">
                 {!readerViewMode && (
                     <SidebarToggleButton
                         sidebarOpen={sidebarOpen}
@@ -306,7 +306,7 @@ function ExpandedToolbar({
                 )}
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
                 <div className="flex items-center gap-1.5 h-9 pl-2 pr-2.5 bg-slate-50 rounded-lg border border-slate-200">
                     <input
                         type="number"

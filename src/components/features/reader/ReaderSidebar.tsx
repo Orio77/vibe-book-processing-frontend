@@ -40,7 +40,10 @@ export function ReaderSidebar({
         <div
             className={`
         fixed md:relative inset-y-0 left-0 z-30 h-full bg-white transition-all duration-300 ease-in-out shadow-xl md:shadow-none overflow-hidden
-        ${sidebarOpen ? 'w-72 translate-x-0 border-r border-slate-200' : 'w-0 -translate-x-full md:translate-x-0 border-r-0'}
+        ${sidebarOpen
+                    ? 'w-full max-w-[90vw] md:w-72 translate-x-0 border-r border-slate-200'
+                    : 'w-0 md:w-72 -translate-x-full md:translate-x-0 border-r-0'
+                }
       `}
             id="reader-sidebar"
             aria-hidden={!sidebarOpen}

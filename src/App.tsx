@@ -93,7 +93,7 @@ function AppShell({
 
     return (
         <div className="flex min-h-[100dvh] min-h-screen flex-col bg-slate-50 font-sans text-slate-800 selection:bg-blue-200 selection:text-blue-900">
-            <NavBar hideMobileTabs={isReaderRoute} />
+            {!isReaderRoute && <NavBar />}
 
             <main
                 className={
