@@ -42,17 +42,17 @@ export function ReaderSidebar({
     return (
         <div
             className={`
-        fixed md:relative inset-y-0 left-0 z-30 h-full bg-white transition-all duration-300 ease-in-out shadow-xl md:shadow-none overflow-hidden
+        fixed md:relative inset-y-0 left-0 z-[100] h-full max-h-[100dvh] bg-white shadow-xl transition-all duration-300 ease-in-out md:z-30 md:max-h-none md:shadow-none overflow-hidden
         ${sidebarOpen
-                    ? 'w-full max-w-[90vw] md:w-72 translate-x-0 border-r border-slate-200'
-                    : 'w-0 md:w-72 -translate-x-full md:translate-x-0 border-r-0'
+                    ? 'w-[min(22rem,calc(100vw-0.5rem))] translate-x-0 border-r border-slate-200 md:w-72'
+                    : 'w-0 -translate-x-full border-r-0 md:w-72 md:translate-x-0'
                 }
       `}
             id="reader-sidebar"
             aria-hidden={!sidebarOpen}
         >
-            <div className="flex flex-col h-full">
-                <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
+            <div className="flex h-full max-h-[inherit] flex-col">
+                <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top,0px))] md:px-5 md:pb-5 md:pt-5">
                     <h2
                         className="font-semibold text-slate-800 truncate pr-4"
                         title={pdfInfo?.title}
@@ -67,7 +67,7 @@ export function ReaderSidebar({
                     </button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto custom-scrollbar">
+                <div className="flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar pb-[env(safe-area-inset-bottom,0px)]">
                     <div className="p-4">
                         {/* AI Tools */}
                         {pdfInfo && !offlineMode && (

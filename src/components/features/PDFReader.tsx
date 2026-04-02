@@ -904,7 +904,7 @@ export function PDFReaderShell() {
                         {sidebarOpen && (
                             <button
                                 type="button"
-                                className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-20 md:hidden transition-opacity cursor-default"
+                                className="fixed inset-0 z-[90] cursor-default bg-slate-900/30 backdrop-blur-sm transition-opacity md:hidden"
                                 onClick={() => setSidebarOpen(false)}
                                 aria-label="Close sidebar"
                             />
