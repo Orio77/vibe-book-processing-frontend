@@ -3,6 +3,7 @@ import { Modal, LoadingSpinner } from '@/components/ui';
 import { createIdeaExplanation, fetchIdeaArguments, fetchIdeaExplanations, fetchQueueJob } from '@/lib/api';
 import { useJobCompletionSubscription } from '@/hooks';
 import { useReaderSessionOptional } from '@/context/ReaderSessionContext';
+import type { RehydratedIdeaExplanationJob } from '@/hooks';
 import { generateIdeaExplanation, LlmRequestError } from '@/lib/llm/openaiCompatible';
 import { loadOfflineLlmSettings } from '@/lib/llm/settings';
 import type { IdeaWithSentences, IdeaArgumentDTO, IdeaExplanationDTO } from '@/types';
@@ -14,10 +15,11 @@ interface IdeaArgumentsModalProps {
     readonly onClose: () => void;
     readonly ideas: IdeaWithSentences[];
     readonly chapterId?: number;
-    readonly onQueueIdeaExplanation?: (chapterId: number, ideaTitle: string, jobId: number) => void;
+    readonly onQueueIdeaExplanation?: (chapterId: number, ideaTitle: string, jobId: number, ideaId: number) => void;
     readonly onResolveIdeaExplanationQueueJob?: (jobId: number, status: 'success' | 'error', response: string) => void;
     /** Persist offline-generated explanations into the library book payload. */
     readonly onOfflineAppendIdeaExplanation?: (ideaId: number, row: IdeaExplanationDTO) => void;
+    readonly restoredPendingIdeaExplanationJobs?: RehydratedIdeaExplanationJob[];
 }
 
 export function IdeaArgumentsModal({
@@ -28,6 +30,7 @@ export function IdeaArgumentsModal({
     onQueueIdeaExplanation,
     onResolveIdeaExplanationQueueJob,
     onOfflineAppendIdeaExplanation,
+    restoredPendingIdeaExplanationJobs,
 }: IdeaArgumentsModalProps) {
     const readerSession = useReaderSessionOptional();
     const [argumentsMap, setArgumentsMap] = useState<Record<number, IdeaArgumentDTO[]>>({});
@@ -38,6 +41,14 @@ export function IdeaArgumentsModal({
     const [loading, setLoading] = useState(false);
     const pendingExplanationJobsRef = useRef<Map<number, number>>(new Map());
     const processingExplanationJobsRef = useRef<Set<number>>(new Set());
+
+    useEffect(() => {
+        pendingExplanationJobsRef.current.clear();
+        if (!restoredPendingIdeaExplanationJobs?.length) return;
+        for (const { jobId, ideaId } of restoredPendingIdeaExplanationJobs) {
+            pendingExplanationJobsRef.current.set(jobId, ideaId);
+        }
+    }, [restoredPendingIdeaExplanationJobs]);
 
     useEffect(() => {
         if (!isOpen || ideas.length === 0) return;
@@ -158,7 +169,7 @@ export function IdeaArgumentsModal({
             if (result.mode === 'queued') {
                 pendingExplanationJobsRef.current.set(result.jobId, ideaId);
                 if (chapterId != null) {
-                    onQueueIdeaExplanation?.(chapterId, ideaTitle, result.jobId);
+                    onQueueIdeaExplanation?.(chapterId, ideaTitle, result.jobId, ideaId);
                 }
                 return;
             }

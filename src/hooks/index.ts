@@ -5,6 +5,10 @@ export { useReaderIdeas } from './useReaderIdeas';
 export { useReaderChat } from './useReaderChat';
 export { useReaderSummary } from './useReaderSummary';
 export { useSentenceMarking } from './useSentenceMarking';
-export { useReaderRequests } from './useReaderRequests';
+export {
+    useReaderRequests,
+    type RehydratedToolJobs,
+    type RehydratedIdeaExplanationJob,
+} from './useReaderRequests';
 export { useReaderViewSettings } from './useReaderViewSettings';
 export { useJobCompletionSubscription } from './useJobCompletionSubscription';

@@ -1,6 +1,7 @@
 import { X } from 'lucide-react';
 import PDFTools from '../PDFTools';
 import type { Chapter, ChapterSummary } from '@/types';
+import type { RehydratedToolJobs } from '@/hooks';
 
 interface ReaderSidebarProps {
     readonly pdfInfo: { id: number; title: string } | null;
@@ -18,6 +19,7 @@ interface ReaderSidebarProps {
     readonly onResolveIdeaExtractionQueueJob?: (jobId: number, status: 'success' | 'error', response: string) => void;
     readonly onQueueIdeasExplanation?: (chapterId: number, jobId: number) => void;
     readonly onResolveIdeasExplanationQueueJob?: (jobId: number, status: 'success' | 'error', response: string) => void;
+    readonly restoredPendingToolJobs?: RehydratedToolJobs;
 }
 
 export function ReaderSidebar({
@@ -35,6 +37,7 @@ export function ReaderSidebar({
     onResolveIdeaExtractionQueueJob,
     onQueueIdeasExplanation,
     onResolveIdeasExplanationQueueJob,
+    restoredPendingToolJobs,
 }: ReaderSidebarProps) {
     return (
         <div
@@ -80,6 +83,7 @@ export function ReaderSidebar({
                                     onResolveIdeaExtractionQueueJob={onResolveIdeaExtractionQueueJob}
                                     onQueueIdeasExplanation={onQueueIdeasExplanation}
                                     onResolveIdeasExplanationQueueJob={onResolveIdeasExplanationQueueJob}
+                                    restoredPendingToolJobs={restoredPendingToolJobs}
                                 />
                             </div>
                         )}

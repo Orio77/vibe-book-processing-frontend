@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import {
     Sparkles,
     BookOpen,
@@ -17,7 +17,7 @@ import {
     getApiErrorMessage,
 } from '@/lib/api';
 import type { ChapterSummary } from '@/types';
-import { useJobCompletionSubscription, useToast } from '@/hooks';
+import { useJobCompletionSubscription, useToast, type RehydratedToolJobs } from '@/hooks';
 import { Toast } from '@/components/ui';
 import type { LucideIcon } from 'lucide-react';
 
@@ -32,6 +32,7 @@ interface PDFToolsProps {
     onResolveIdeaExtractionQueueJob?: (jobId: number, status: 'success' | 'error', response: string) => void;
     onQueueIdeasExplanation?: (chapterId: number, jobId: number) => void;
     onResolveIdeasExplanationQueueJob?: (jobId: number, status: 'success' | 'error', response: string) => void;
+    restoredPendingToolJobs?: RehydratedToolJobs;
 }
 
 const PDFTools: React.FC<PDFToolsProps> = ({
@@ -45,6 +46,7 @@ const PDFTools: React.FC<PDFToolsProps> = ({
     onResolveIdeaExtractionQueueJob,
     onQueueIdeasExplanation,
     onResolveIdeasExplanationQueueJob,
+    restoredPendingToolJobs,
 }) => {
     const [loadingAction, setLoadingAction] = useState<string | null>(null);
     const { toast, showToast, dismissToast } = useToast();
@@ -54,6 +56,22 @@ const PDFTools: React.FC<PDFToolsProps> = ({
     const processingIdeaExtractionJobsRef = useRef<Set<number>>(new Set());
     const pendingIdeasExplanationJobsRef = useRef<Map<number, number>>(new Map());
     const processingIdeasExplanationJobsRef = useRef<Set<number>>(new Set());
+
+    useEffect(() => {
+        pendingSummaryJobsRef.current.clear();
+        pendingIdeaExtractionJobsRef.current.clear();
+        pendingIdeasExplanationJobsRef.current.clear();
+        if (!restoredPendingToolJobs) return;
+        for (const { jobId, chapterId } of restoredPendingToolJobs.summaryJobs) {
+            pendingSummaryJobsRef.current.set(jobId, chapterId);
+        }
+        for (const { jobId, chapterId } of restoredPendingToolJobs.ideaExtractJobs) {
+            pendingIdeaExtractionJobsRef.current.set(jobId, chapterId);
+        }
+        for (const { jobId, chapterId } of restoredPendingToolJobs.ideasExplainJobs) {
+            pendingIdeasExplanationJobsRef.current.set(jobId, chapterId);
+        }
+    }, [pdfId, restoredPendingToolJobs]);
 
     const runAction = useCallback(
         async (id: string, action: () => Promise<void>, successMsg: string) => {
