@@ -125,36 +125,52 @@ interface VersionItemProps {
     index: number;
     isSelected: boolean;
     onSelect: () => void;
+    compact?: boolean;
 }
 
-const VersionItem: React.FC<VersionItemProps> = ({ summary, index, isSelected, onSelect }) => {
+const VersionItem: React.FC<VersionItemProps> = ({
+    summary,
+    index,
+    isSelected,
+    onSelect,
+    compact = false,
+}) => {
     const preview = summary.summaryText.slice(0, 80).trim() + (summary.summaryText.length > 80 ? '…' : '');
 
     return (
         <button
+            type="button"
             onClick={onSelect}
-            className={`w-full text-left px-3 py-3 rounded-xl border transition-all duration-150 ${isSelected
-                ? 'bg-blue-50 border-blue-200 shadow-sm'
-                : 'bg-white border-slate-100 hover:border-slate-300 hover:shadow-sm'
+            className={`rounded-xl border text-left transition-all duration-150 ${compact
+                ? `min-w-[148px] max-w-[180px] shrink-0 px-2.5 py-2 ${isSelected
+                    ? 'border-blue-200 bg-blue-50 shadow-sm'
+                    : 'border-slate-100 bg-white hover:border-slate-300 hover:shadow-sm'
+                }`
+                : `w-full px-3 py-3 ${isSelected
+                    ? 'border-blue-200 bg-blue-50 shadow-sm'
+                    : 'border-slate-100 bg-white hover:border-slate-300 hover:shadow-sm'
+                }`
                 }`}
         >
-            <div className="flex items-center justify-between mb-1">
-                <span className={`text-xs font-semibold uppercase tracking-wider ${isSelected ? 'text-blue-600' : 'text-slate-400'}`}>
-                    Version {index + 1}
+            <div className={`flex items-center justify-between ${compact ? 'mb-0.5' : 'mb-1'}`}>
+                <span className={`font-semibold uppercase tracking-wider ${compact ? 'text-[10px]' : 'text-xs'} ${isSelected ? 'text-blue-600' : 'text-slate-400'}`}>
+                    {compact ? `V${index + 1}` : `Version ${index + 1}`}
                 </span>
                 {isSelected && (
-                    <span className="text-[10px] bg-blue-600 text-white px-1.5 py-0.5 rounded-full font-bold">
-                        Viewing
+                    <span className={`rounded-full bg-blue-600 font-bold text-white ${compact ? 'px-1 py-px text-[9px]' : 'px-1.5 py-0.5 text-[10px]'}`}>
+                        {compact ? 'Now' : 'Viewing'}
                     </span>
                 )}
             </div>
-            <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{preview}</p>
-            <div className="flex items-center gap-1.5 mt-2">
-                <Clock className="w-3 h-3 text-slate-300" />
-                <span className="text-[10px] text-slate-400">{formatReadingTime(summary.summaryText)}</span>
-                <span className="text-slate-200 mx-0.5">·</span>
-                <span className="text-[10px] text-slate-400">{formatWordCount(summary.summaryText)}</span>
-            </div>
+            <p className={`text-slate-500 leading-relaxed ${compact ? 'line-clamp-2 text-[10px]' : 'line-clamp-2 text-xs'}`}>{preview}</p>
+            {!compact && (
+                <div className="mt-2 flex items-center gap-1.5">
+                    <Clock className="h-3 w-3 text-slate-300" />
+                    <span className="text-[10px] text-slate-400">{formatReadingTime(summary.summaryText)}</span>
+                    <span className="mx-0.5 text-slate-200">·</span>
+                    <span className="text-[10px] text-slate-400">{formatWordCount(summary.summaryText)}</span>
+                </div>
+            )}
         </button>
     );
 };
@@ -224,12 +240,73 @@ export const SummaryViewer: React.FC<SummaryViewerProps> = ({
     };
 
     return (
-        <div className="flex h-full min-h-0 bg-white">
+        <div className="flex h-full min-h-0 flex-col bg-white md:flex-row">
+            {/* ── Versions: horizontal strip on mobile, left sidebar on md+ ── */}
+            {summaries.length > 0 && (
+                <aside
+                    className="flex min-h-0 shrink-0 flex-col border-slate-200 bg-slate-50/90 md:h-full md:w-56 md:border-b-0 md:border-r lg:w-64 xl:w-72"
+                    aria-label="Summary versions"
+                >
+                    <button
+                        type="button"
+                        onClick={() => setHistoryOpen((o) => !o)}
+                        className="flex w-full shrink-0 items-center justify-between border-b border-slate-100 px-3 py-2.5 text-left transition-colors hover:bg-slate-100/70 md:px-4 md:py-3.5"
+                    >
+                        <span className="text-xs font-semibold tracking-wider text-slate-500 uppercase">
+                            Versions
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                            <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-xs leading-none font-bold text-slate-500">
+                                {summaries.length}
+                            </span>
+                            {historyOpen
+                                ? <ChevronUp className="h-3.5 w-3.5 text-slate-400 md:hidden" />
+                                : <ChevronDown className="h-3.5 w-3.5 text-slate-400 md:hidden" />
+                            }
+                        </div>
+                    </button>
 
-            {/* ── Main reading area ── */}
-            <div ref={contentRef} className="flex-1 overflow-y-auto custom-scrollbar min-w-0">
+                    {/* Mobile: collapsible horizontal scroller; md+: full-height vertical list */}
+                    <div
+                        className={`overflow-hidden border-b border-slate-100 transition-[max-height] duration-200 md:flex md:min-h-0 md:flex-1 md:max-h-none md:flex-col md:overflow-hidden md:border-b-0 ${historyOpen ? 'max-h-[min(42vh,280px)]' : 'max-h-0 md:max-h-none'}`}
+                    >
+                        <div className="flex gap-2 overflow-x-auto p-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:hidden">
+                            {summaries.map((s, i) => (
+                                <VersionItem
+                                    key={s.id}
+                                    summary={s}
+                                    index={i}
+                                    isSelected={s.id === resolvedId}
+                                    onSelect={() => setSelectedId(s.id)}
+                                    compact
+                                />
+                            ))}
+                        </div>
+                        <div className="custom-scrollbar hidden min-h-0 flex-1 flex-col space-y-2 overflow-y-auto p-3 md:flex">
+                            {summaries.map((s, i) => (
+                                <VersionItem
+                                    key={s.id}
+                                    summary={s}
+                                    index={i}
+                                    isSelected={s.id === resolvedId}
+                                    onSelect={() => setSelectedId(s.id)}
+                                />
+                            ))}
+                        </div>
+                    </div>
+
+                    {summaries.length > 1 && (
+                        <p className="hidden shrink-0 border-t border-slate-100 px-4 py-3 text-center text-[10px] text-slate-400 md:block">
+                            ↑↓ arrow keys to navigate
+                        </p>
+                    )}
+                </aside>
+            )}
+
+            {/* ── Main reading area (full remaining width) ── */}
+            <div ref={contentRef} className="min-h-0 min-w-0 flex-1 overflow-y-auto custom-scrollbar">
                 {selectedSummary ? (
-                    <div className="max-w-3xl mx-auto px-6 md:px-10 py-8 lg:py-12">
+                    <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-8 sm:py-8 xl:max-w-5xl xl:px-12 xl:py-12">
 
                         {/* Chapter label */}
                         <div className="flex items-center gap-2.5 mb-6">
@@ -312,49 +389,6 @@ export const SummaryViewer: React.FC<SummaryViewerProps> = ({
                     </div>
                 )}
             </div>
-
-            {/* ── Version history sidebar ── */}
-            {summaries.length > 0 && (
-                <div className="w-60 flex-shrink-0 border-l border-slate-100 bg-slate-50/50 flex flex-col">
-                    <button
-                        onClick={() => setHistoryOpen(o => !o)}
-                        className="flex items-center justify-between px-4 py-3.5 border-b border-slate-100 text-left hover:bg-slate-100/60 transition-colors"
-                    >
-                        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                            Versions
-                        </span>
-                        <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-bold text-slate-400 bg-slate-200 rounded-full px-1.5 py-0.5 leading-none">
-                                {summaries.length}
-                            </span>
-                            {historyOpen
-                                ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
-                                : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-                            }
-                        </div>
-                    </button>
-
-                    {historyOpen && (
-                        <div className="flex-1 overflow-y-auto p-3 space-y-2">
-                            {summaries.map((s, i) => (
-                                <VersionItem
-                                    key={s.id}
-                                    summary={s}
-                                    index={i}
-                                    isSelected={s.id === resolvedId}
-                                    onSelect={() => setSelectedId(s.id)}
-                                />
-                            ))}
-                        </div>
-                    )}
-
-                    {summaries.length > 1 && (
-                        <p className="text-[10px] text-slate-400 text-center px-4 py-3 border-t border-slate-100">
-                            ↑↓ arrow keys to navigate
-                        </p>
-                    )}
-                </div>
-            )}
         </div>
     );
 };

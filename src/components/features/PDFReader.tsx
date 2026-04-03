@@ -28,7 +28,7 @@ import { ChatResponseModal } from './ChatResponseModal';
 import type { Sentence, PDFChatResponse } from '@/types';
 import type { IdeaExplanationDTO } from '@/types';
 import type { OfflineBookRecord } from '@/types/offlineLibrary';
-import { getApiErrorMessage } from '@/lib/api';
+import { getApiErrorMessage, getSummaryByChapterId } from '@/lib/api';
 import { ROUTES } from '@/lib/constants';
 
 const READER_THEME_CLASSES = {
@@ -156,6 +156,11 @@ export function PDFReaderShell() {
         handleDeleteSummary,
     } = useReaderSummary(activeChapter);
 
+    const handleSummaryJobSettledForQueue = useCallback(async (chapterId: number) => {
+        const data = await getSummaryByChapterId(chapterId);
+        syncSummaries(data);
+    }, [syncSummaries]);
+
     const {
         isMarkingMode,
         markedSentences,
@@ -175,6 +180,8 @@ export function PDFReaderShell() {
     const {
         requests,
         selectedRequest,
+        rehydratedToolJobs,
+        rehydratedIdeaExplanationJobs,
         handleRequestExplanation,
         handleSendQuery,
         registerSummaryQueueJob,
@@ -187,7 +194,13 @@ export function PDFReaderShell() {
         resolveIdeasExplanationQueueJob,
         openRequest,
         closeRequestModal,
-    } = useReaderRequests(activeChapter, markedSentences, exitMarkingMode, pdfInfo?.title);
+    } = useReaderRequests(activeChapter, markedSentences, exitMarkingMode, pdfInfo?.title, session.mode === 'online' && pdfInfo != null
+        ? {
+            pdfId: pdfInfo.id,
+            onlinePersistence: true,
+            onSummaryJobSettled: handleSummaryJobSettledForQueue,
+        }
+        : undefined);
 
     const { toast, showToast, dismissToast } = useToast();
     const completedRequestToastIdsRef = useRef<Set<string>>(new Set());
@@ -404,8 +417,8 @@ export function PDFReaderShell() {
         resolveSummaryQueueJob(jobId, status, response);
     }, [resolveSummaryQueueJob]);
 
-    const handleQueueIdeaExplanation = useCallback((chapterId: number, ideaTitle: string, jobId: number) => {
-        registerIdeaExplanationQueueJob(chapterId, ideaTitle, jobId);
+    const handleQueueIdeaExplanation = useCallback((chapterId: number, ideaTitle: string, jobId: number, ideaId: number) => {
+        registerIdeaExplanationQueueJob(chapterId, ideaTitle, jobId, ideaId);
     }, [registerIdeaExplanationQueueJob]);
 
     const handleResolveIdeaExplanationQueueJob = useCallback((jobId: number, status: 'success' | 'error', response: string) => {
@@ -891,7 +904,7 @@ export function PDFReaderShell() {
                         {sidebarOpen && (
                             <button
                                 type="button"
-                                className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-20 md:hidden transition-opacity cursor-default"
+                                className="fixed inset-0 z-[90] cursor-default bg-slate-900/30 backdrop-blur-sm transition-opacity md:hidden"
                                 onClick={() => setSidebarOpen(false)}
                                 aria-label="Close sidebar"
                             />
@@ -913,6 +926,7 @@ export function PDFReaderShell() {
                             onResolveIdeaExtractionQueueJob={handleResolveIdeaExtractionQueueJob}
                             onQueueIdeasExplanation={handleQueueIdeasExplanation}
                             onResolveIdeasExplanationQueueJob={handleResolveIdeasExplanationQueueJob}
+                            restoredPendingToolJobs={session.mode === 'online' ? rehydratedToolJobs : undefined}
                         />
 
                         {/* Main Content Area */}
@@ -1061,6 +1075,9 @@ export function PDFReaderShell() {
                             onQueueIdeaExplanation={handleQueueIdeaExplanation}
                             onResolveIdeaExplanationQueueJob={handleResolveIdeaExplanationQueueJob}
                             onOfflineAppendIdeaExplanation={handleOfflineAppendIdeaExplanation}
+                            restoredPendingIdeaExplanationJobs={
+                                session.mode === 'online' ? rehydratedIdeaExplanationJobs : undefined
+                            }
                         />
 
                         <ChatResponseModal
