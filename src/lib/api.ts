@@ -1,15 +1,15 @@
-import axios from 'axios';
 import type {
-    PDF,
     Chapter,
-    Sentence,
     ChapterPageRange,
     ChapterSummary,
-    IdeaWithSentences,
     IdeaArgumentDTO,
     IdeaExplanationDTO,
+    IdeaWithSentences,
+    PDF,
     PDFChatResponse,
+    Sentence,
 } from '@/types';
+import axios from 'axios';
 
 /**
  * Configured Axios instance.
@@ -20,6 +20,98 @@ const apiClient = axios.create({
     headers: {
         Accept: 'application/json',
     },
+});
+
+const AUTH_TOKEN_STORAGE_KEY = 'bookProcessing.authToken';
+
+function resolveApiRootBaseUrl(): string | undefined {
+    const configured = import.meta.env.VITE_API_BASE_URL;
+    if (!configured) return undefined;
+    return configured.replace(/\/api\/pdf\/?$/, '');
+}
+
+export function getAuthToken(): string | null {
+    const token = globalThis.localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
+    if (!token) return null;
+    const normalized = token.trim();
+    return normalized.length > 0 ? normalized : null;
+}
+
+export function setAuthToken(token: string): void {
+    const normalized = token.trim();
+    if (normalized.length === 0) {
+        globalThis.localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
+        return;
+    }
+    globalThis.localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, normalized);
+}
+
+export function clearAuthToken(): void {
+    globalThis.localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
+}
+
+export function isAuthenticated(): boolean {
+    return getAuthToken() !== null;
+}
+
+function extractJwtToken(payload: unknown): string | null {
+    if (typeof payload === 'string') {
+        const normalized = payload.trim();
+        return normalized.length > 0 ? normalized : null;
+    }
+
+    if (!payload || typeof payload !== 'object') {
+        return null;
+    }
+
+    const candidate = payload as {
+        token?: unknown;
+        jwt?: unknown;
+        jwtToken?: unknown;
+        bearerToken?: unknown;
+        access?: unknown;
+        accessToken?: unknown;
+        access_token?: unknown;
+        data?: unknown;
+    };
+
+    const directToken = candidate.token
+        ?? candidate.jwt
+        ?? candidate.jwtToken
+        ?? candidate.bearerToken
+        ?? candidate.access
+        ?? candidate.accessToken
+        ?? candidate.access_token;
+
+    if (typeof directToken === 'string') {
+        const normalizedDirectToken = directToken.trim();
+        return normalizedDirectToken.length > 0 ? normalizedDirectToken : null;
+    }
+
+    if (candidate.data && typeof candidate.data === 'object') {
+        return extractJwtToken(candidate.data);
+    }
+
+    return null;
+}
+
+apiClient.interceptors.request.use((config) => {
+    const token = getAuthToken();
+    if (!token) {
+        return config;
+    }
+
+    if (config.headers && typeof (config.headers as { set?: unknown }).set === 'function') {
+        (config.headers as { set: (name: string, value: string) => void })
+            .set('Authorization', `Bearer ${token}`);
+    } else {
+        config.headers = {
+            ...(config.headers as Record<string, string> | undefined),
+            Authorization: `Bearer ${token}`,
+        } as typeof config.headers;
+    }
+
+    return config;
 });
 
 // ---------------------------------------------------------------------------
@@ -72,6 +164,44 @@ export function getApiErrorMessage(error: unknown, fallbackMessage: string): str
     return fallbackMessage;
 }
 
+export interface RegisterRequest {
+    email: string;
+    password: string;
+}
+
+export interface LoginRequest {
+    email: string;
+    password: string;
+}
+
+export async function registerUser(request: RegisterRequest): Promise<string | null> {
+    const res = await apiClient.post<unknown>('/auth/register', request, {
+        baseURL: resolveApiRootBaseUrl(),
+    });
+
+    const token = extractJwtToken(res.data);
+
+    if (token) {
+        setAuthToken(token);
+    }
+
+    return token;
+}
+
+export async function loginUser(request: LoginRequest): Promise<string> {
+    const res = await apiClient.post<unknown>('/auth/login', request, {
+        baseURL: resolveApiRootBaseUrl(),
+    });
+
+    const token = extractJwtToken(res.data);
+    if (!token) {
+        throw new TypeError('JWT token is missing in login response payload');
+    }
+
+    setAuthToken(token);
+    return token;
+}
+
 // ---------------------------------------------------------------------------
 // PDF CRUD
 // ---------------------------------------------------------------------------
@@ -120,8 +250,8 @@ export interface QueueJob {
 }
 
 export async function fetchQueueJob(id: number): Promise<QueueJob> {
-    const res = await apiClient.get<QueueJob>(`/job/${id}`, {
-        baseURL: import.meta.env.VITE_API_BASE_URL?.replace(/\/api\/pdf\/?$/, ''),
+    const res = await apiClient.get<QueueJob>(`/api/job/${id}`, {
+        baseURL: resolveApiRootBaseUrl(),
     });
     return res.data;
 }

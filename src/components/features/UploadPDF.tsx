@@ -3,7 +3,11 @@ import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Upload, Loader2 } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
-import { uploadPdf } from '@/lib/api';
+import {
+    getApiErrorMessage,
+    uploadPdf,
+    clearAuthToken,
+} from '@/lib/api';
 import { ROUTES } from '@/lib/constants';
 import { ErrorAlert } from '@/components/ui';
 import { Dropzone, ChapterRangeEditor } from './upload';
@@ -200,8 +204,13 @@ const UploadPDF = () => {
             navigate(ROUTES.readById(result.pdfId));
         } catch (err: unknown) {
             console.error(err);
-            const axiosErr = err as { response?: { data?: { message?: string } } };
-            setError(axiosErr.response?.data?.message ?? 'Failed to upload PDF');
+            const axiosErr = err as { response?: { status?: number } };
+            if (axiosErr.response?.status === 401) {
+                clearAuthToken();
+                setError('Your session has expired. Please login again.');
+                return;
+            }
+            setError(getApiErrorMessage(err, 'Failed to upload PDF'));
         } finally {
             setUploading(false);
         }

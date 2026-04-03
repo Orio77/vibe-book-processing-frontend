@@ -29,7 +29,7 @@ export function useJobCompletionSubscription(
         });
 
         client.onConnect = () => {
-            client.subscribe('/topic/jobs/completed', (message) => {
+            client.subscribe('/api/topic/jobs/completed', (message) => {
                 const parsed = Number(message.body);
                 if (Number.isFinite(parsed)) {
                     onCompleted(parsed);

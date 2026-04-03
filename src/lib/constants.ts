@@ -9,6 +9,8 @@ export const TOAST_DURATION_MS = 3000;
 
 export const ROUTES = {
     HOME: '/',
+    AUTH_LOGIN: '/auth/login',
+    AUTH_REGISTER: '/auth/register',
     UPLOAD: '/upload',
     READ: '/read/:id',
     /** Must be registered before READ so "offline" is not captured as :id */

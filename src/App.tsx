@@ -1,10 +1,11 @@
 import { lazy, Suspense, useCallback, useRef } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import type { ReactElement } from 'react';
+import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { NavBar, ErrorBoundary, LoadingSpinner, NotFound, Toast } from '@/components/ui';
 import { useJobCompletionSubscription, useToast } from '@/hooks';
 import { ROUTES } from '@/lib/constants';
 import type { ToastData } from '@/types';
-import { fetchQueueJob } from '@/lib/api';
+import { fetchQueueJob, isAuthenticated } from '@/lib/api';
 
 const PENDING_UPLOAD_JOB_IDS_KEY = 'pendingUploadJobIds';
 
@@ -30,14 +31,27 @@ function writePendingUploadJobIds(jobIds: number[]): void {
 const PDFList = lazy(() => import('@/components/features/PDFList'));
 const UploadPDF = lazy(() => import('@/components/features/UploadPDF'));
 const PDFReader = lazy(() => import('@/components/features/PDFReader'));
+const AuthPage = lazy(() => import('@/components/features/AuthPage'));
 const OfflineLibraryPage = lazy(() => import('@/components/features/OfflineReaderPage'));
 const OfflineExportedReaderPage = lazy(() =>
     import('@/components/features/OfflineReaderPage').then((m) => ({ default: m.OfflineExportedReaderPage })),
 );
 
+function RequireAuth({ children }: { readonly children: ReactElement }) {
+    const location = useLocation();
+
+    if (!isAuthenticated()) {
+        const from = `${location.pathname}${location.search}${location.hash}`;
+        return <Navigate to={ROUTES.AUTH_LOGIN} replace state={{ from }} />;
+    }
+
+    return children;
+}
+
 function App() {
     const processingJobsRef = useRef<Set<number>>(new Set());
     const { toast, showToast, dismissToast } = useToast();
+    const authenticated = isAuthenticated();
 
     const handleJobCompleted = useCallback(async (jobId: number) => {
         const pendingJobIds = readPendingUploadJobIds();
@@ -70,7 +84,7 @@ function App() {
         }
     }, [showToast]);
 
-    useJobCompletionSubscription(handleJobCompleted);
+    useJobCompletionSubscription(handleJobCompleted, authenticated);
 
     return (
         <Router>
@@ -90,10 +104,11 @@ function AppShell({
 }) {
     const location = useLocation();
     const isReaderRoute = location.pathname.startsWith('/read/');
+    const isAuthRoute = location.pathname.startsWith('/auth/');
 
     return (
         <div className="flex min-h-[100dvh] min-h-screen flex-col bg-slate-50 font-sans text-slate-800 selection:bg-blue-200 selection:text-blue-900">
-            {!isReaderRoute && <NavBar />}
+            {!isReaderRoute && !isAuthRoute && <NavBar />}
 
             <main
                 className={
@@ -104,11 +119,13 @@ function AppShell({
             >
                 <Suspense fallback={<LoadingSpinner className="h-64" />}>
                     <Routes>
-                        <Route path={ROUTES.HOME} element={<PDFList />} />
-                        <Route path={ROUTES.UPLOAD} element={<UploadPDF />} />
-                        <Route path={ROUTES.READ_OFFLINE_EXPORT} element={<OfflineExportedReaderPage />} />
-                        <Route path={ROUTES.READ_OFFLINE} element={<OfflineLibraryPage />} />
-                        <Route path={ROUTES.READ} element={<PDFReader />} />
+                        <Route path={ROUTES.AUTH_LOGIN} element={<AuthPage mode="login" />} />
+                        <Route path={ROUTES.AUTH_REGISTER} element={<AuthPage mode="register" />} />
+                        <Route path={ROUTES.HOME} element={<RequireAuth><PDFList /></RequireAuth>} />
+                        <Route path={ROUTES.UPLOAD} element={<RequireAuth><UploadPDF /></RequireAuth>} />
+                        <Route path={ROUTES.READ_OFFLINE_EXPORT} element={<RequireAuth><OfflineExportedReaderPage /></RequireAuth>} />
+                        <Route path={ROUTES.READ_OFFLINE} element={<RequireAuth><OfflineLibraryPage /></RequireAuth>} />
+                        <Route path={ROUTES.READ} element={<RequireAuth><PDFReader /></RequireAuth>} />
                         <Route path="*" element={<NotFound />} />
                     </Routes>
                 </Suspense>
