@@ -45,7 +45,7 @@ export function ReaderSidebar({
         fixed md:relative inset-y-0 left-0 z-[100] h-full max-h-[100dvh] bg-white shadow-xl transition-all duration-300 ease-in-out md:z-30 md:max-h-none md:shadow-none overflow-hidden
         ${sidebarOpen
                     ? 'w-[min(22rem,calc(100vw-0.5rem))] translate-x-0 border-r border-slate-200 md:w-72'
-                    : 'w-0 -translate-x-full border-r-0 md:w-72 md:translate-x-0'
+                    : 'w-0 -translate-x-full border-r-0 md:w-0 md:translate-x-0'
                 }
       `}
             id="reader-sidebar"

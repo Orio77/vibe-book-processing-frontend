@@ -12,3 +12,7 @@ export {
 } from './useReaderRequests';
 export { useReaderViewSettings } from './useReaderViewSettings';
 export { useJobCompletionSubscription } from './useJobCompletionSubscription';
+export { useReaderViewOverlay } from './useReaderViewOverlay';
+export { useReaderPageFlipGesture } from './useReaderPageFlipGesture';
+export { useReaderRequestToasts } from './useReaderRequestToasts';
+export { useOfflineExportActions } from './useOfflineExportActions';

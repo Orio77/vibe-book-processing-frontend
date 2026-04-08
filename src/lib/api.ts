@@ -24,6 +24,37 @@ const apiClient = axios.create({
 
 const AUTH_TOKEN_STORAGE_KEY = 'bookProcessing.authToken';
 
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+    const parts = token.split('.');
+    if (parts.length < 2) return null;
+
+    try {
+        const base64 = parts[1].replaceAll('-', '+').replaceAll('_', '/');
+        const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
+        const json = globalThis.atob(padded);
+        const parsed = JSON.parse(json) as unknown;
+        if (!parsed || typeof parsed !== 'object') {
+            return null;
+        }
+        return parsed as Record<string, unknown>;
+    } catch {
+        return null;
+    }
+}
+
+function isJwtExpired(token: string): boolean {
+    const payload = decodeJwtPayload(token);
+    if (!payload) return false;
+
+    const exp = payload.exp;
+    if (typeof exp !== 'number' || !Number.isFinite(exp)) {
+        return false;
+    }
+
+    const now = Math.floor(Date.now() / 1000);
+    return exp <= now;
+}
+
 function resolveApiRootBaseUrl(): string | undefined {
     const configured = import.meta.env.VITE_API_BASE_URL;
     if (!configured) return undefined;
@@ -51,7 +82,15 @@ export function clearAuthToken(): void {
 }
 
 export function isAuthenticated(): boolean {
-    return getAuthToken() !== null;
+    const token = getAuthToken();
+    if (!token) return false;
+
+    if (isJwtExpired(token)) {
+        clearAuthToken();
+        return false;
+    }
+
+    return true;
 }
 
 function extractJwtToken(payload: unknown): string | null {
@@ -113,6 +152,24 @@ apiClient.interceptors.request.use((config) => {
 
     return config;
 });
+
+apiClient.interceptors.response.use(
+    (response) => response,
+    (error: unknown) => {
+        if (axios.isAxiosError(error) && error.response?.status === 401) {
+            clearAuthToken();
+
+            if (globalThis.location !== undefined) {
+                const isAuthRoute = globalThis.location.pathname.startsWith('/auth/');
+                if (!isAuthRoute) {
+                    globalThis.location.assign('/auth/login');
+                }
+            }
+        }
+
+        return Promise.reject(error);
+    },
+);
 
 // ---------------------------------------------------------------------------
 // Helpers

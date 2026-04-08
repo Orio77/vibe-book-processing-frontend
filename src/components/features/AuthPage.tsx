@@ -26,7 +26,16 @@ export default function AuthPage({ mode }: AuthPageProps) {
 
     const redirectTarget = useMemo(() => {
         const state = location.state as { from?: string } | null;
-        return state?.from && state.from.trim().length > 0 ? state.from : ROUTES.HOME;
+        const from = state?.from?.trim();
+        if (!from) {
+            return ROUTES.HOME;
+        }
+
+        if (from === ROUTES.UPLOAD) {
+            return ROUTES.HOME;
+        }
+
+        return from;
     }, [location.state]);
 
     if (isAuthenticated()) {
