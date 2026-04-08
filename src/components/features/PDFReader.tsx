@@ -87,12 +87,13 @@ export function PDFReaderShell() {
     const [exportingPack, setExportingPack] = useState(false);
     const [exportPackModalOpen, setExportPackModalOpen] = useState(false);
     const [offlineLibraryUpdateTargets, setOfflineLibraryUpdateTargets] = useState<OfflineLibraryUpdateTarget[]>([]);
-    const [isCoarsePointer, setIsCoarsePointer] = useState(false);
     const [pullIndicator, setPullIndicator] = useState<PullIndicatorState>({
         active: false,
         direction: null,
         progress: 0,
     });
+    const readerViewHistoryEntryRef = useRef(false);
+    const suppressReaderViewPopStateRef = useRef(false);
 
     const readerViewContainerRef = useRef<HTMLDivElement | null>(null);
     const pullGestureRef = useRef<{
@@ -235,24 +236,29 @@ export function PDFReaderShell() {
 
     const handleExitReaderView = useCallback(() => {
         setReaderViewMode(false);
+        if (readerViewHistoryEntryRef.current) {
+            suppressReaderViewPopStateRef.current = true;
+            readerViewHistoryEntryRef.current = false;
+            globalThis.history.back();
+        }
     }, []);
 
     const handleToggleReaderView = useCallback(() => {
-        setReaderViewMode((prev) => {
-            const next = !prev;
-            if (next) {
-                setSidebarOpen(false);
-                closeSummary();
-                exitMarkingMode();
-                closeIdeaModal();
-                closeChatModal();
-                closeRequestModal();
-                setRequestQueueOpen(false);
-                setReaderSettingsOpen(false);
-            }
-            return next;
-        });
-    }, [closeSummary, exitMarkingMode, closeIdeaModal, closeChatModal, closeRequestModal]);
+        if (readerViewMode) {
+            handleExitReaderView();
+            return;
+        }
+
+        setSidebarOpen(false);
+        closeSummary();
+        exitMarkingMode();
+        closeIdeaModal();
+        closeChatModal();
+        closeRequestModal();
+        setRequestQueueOpen(false);
+        setReaderSettingsOpen(false);
+        setReaderViewMode(true);
+    }, [readerViewMode, handleExitReaderView, closeSummary, exitMarkingMode, closeIdeaModal, closeChatModal, closeRequestModal]);
 
     const pendingRequestCount = requests.filter((request) => request.status === 'pending').length;
 
@@ -488,19 +494,26 @@ export function PDFReaderShell() {
     }, [readerViewMode]);
 
     useEffect(() => {
-        if (typeof globalThis.matchMedia !== 'function') {
-            return;
-        }
+        if (!readerViewMode) return;
 
-        const mediaQuery = globalThis.matchMedia('(pointer: coarse)');
-        const sync = () => setIsCoarsePointer(mediaQuery.matches);
-        sync();
+        globalThis.history.pushState({ __readerViewOverlay: true }, '', globalThis.location.href);
+        readerViewHistoryEntryRef.current = true;
 
-        mediaQuery.addEventListener('change', sync);
-        return () => {
-            mediaQuery.removeEventListener('change', sync);
+        const handlePopState = () => {
+            if (suppressReaderViewPopStateRef.current) {
+                suppressReaderViewPopStateRef.current = false;
+                return;
+            }
+            if (!readerViewHistoryEntryRef.current) return;
+            readerViewHistoryEntryRef.current = false;
+            setReaderViewMode(false);
         };
-    }, []);
+
+        globalThis.addEventListener('popstate', handlePopState);
+        return () => {
+            globalThis.removeEventListener('popstate', handlePopState);
+        };
+    }, [readerViewMode]);
 
     useEffect(() => {
         if (!readerViewMode) {
@@ -721,7 +734,7 @@ export function PDFReaderShell() {
         }
     }
 
-    const shouldShowEdgeClickZones = readerSettings.pageFlipEnabled && !isCoarsePointer;
+    const shouldShowEdgeClickZones = readerSettings.pageFlipEnabled;
 
     const resolvePullDirection = (delta: number, canBackwardPull: boolean, canForwardPull: boolean): PageFlipDirection | null => {
         if (delta > 0 && canBackwardPull) return 'backward';
