@@ -184,6 +184,7 @@ export const SummaryViewer: React.FC<SummaryViewerProps> = ({
     onDeleteSummary,
     chapterTitle = 'Chapter Summary',
 }) => {
+    const summaryList = Array.isArray(summaries) ? summaries : [];
     const [selectedId, setSelectedId] = useState<number | null>(null);
     const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
     const [historyOpen, setHistoryOpen] = useState(true);
@@ -193,14 +194,14 @@ export const SummaryViewer: React.FC<SummaryViewerProps> = ({
 
     // Keep selection valid or fall to latest
     let resolvedId: number | null;
-    if (selectedId !== null && summaries.some(s => s.id === selectedId)) {
+    if (selectedId !== null && summaryList.some(s => s.id === selectedId)) {
         resolvedId = selectedId;
     } else {
-        resolvedId = summaries.at(-1)?.id ?? null;
+        resolvedId = summaryList.at(-1)?.id ?? null;
     }
 
-    const selectedSummary = summaries.find(s => s.id === resolvedId) ?? null;
-    const selectedIndex = summaries.findIndex(s => s.id === resolvedId);
+    const selectedSummary = summaryList.find(s => s.id === resolvedId) ?? null;
+    const selectedIndex = summaryList.findIndex(s => s.id === resolvedId);
 
     // Scroll content to top when switching version
     useEffect(() => {
@@ -211,13 +212,13 @@ export const SummaryViewer: React.FC<SummaryViewerProps> = ({
     const handleKeyDown = useCallback(
         (e: KeyboardEvent) => {
             if (e.key === 'ArrowUp' && selectedIndex > 0) {
-                setSelectedId(summaries[selectedIndex - 1].id);
+                setSelectedId(summaryList[selectedIndex - 1].id);
             }
-            if (e.key === 'ArrowDown' && selectedIndex < summaries.length - 1) {
-                setSelectedId(summaries[selectedIndex + 1].id);
+            if (e.key === 'ArrowDown' && selectedIndex < summaryList.length - 1) {
+                setSelectedId(summaryList[selectedIndex + 1].id);
             }
         },
-        [selectedIndex, summaries],
+        [selectedIndex, summaryList],
     );
 
     useEffect(() => {
@@ -235,14 +236,14 @@ export const SummaryViewer: React.FC<SummaryViewerProps> = ({
     const handleDelete = (id: number) => {
         setConfirmDeleteId(null);
         onDeleteSummary(id);
-        const remaining = summaries.filter(s => s.id !== id);
+        const remaining = summaryList.filter(s => s.id !== id);
         setSelectedId(remaining.at(-1)?.id ?? null);
     };
 
     return (
         <div className="flex h-full min-h-0 flex-col bg-white md:flex-row">
             {/* ── Versions: horizontal strip on mobile, left sidebar on md+ ── */}
-            {summaries.length > 0 && (
+            {summaryList.length > 0 && (
                 <aside
                     className="flex min-h-0 shrink-0 flex-col border-slate-200 bg-slate-50/90 md:h-full md:w-56 md:border-b-0 md:border-r lg:w-64 xl:w-72"
                     aria-label="Summary versions"
@@ -257,7 +258,7 @@ export const SummaryViewer: React.FC<SummaryViewerProps> = ({
                         </span>
                         <div className="flex items-center gap-1.5">
                             <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-xs leading-none font-bold text-slate-500">
-                                {summaries.length}
+                                {summaryList.length}
                             </span>
                             {historyOpen
                                 ? <ChevronUp className="h-3.5 w-3.5 text-slate-400 md:hidden" />
@@ -271,7 +272,7 @@ export const SummaryViewer: React.FC<SummaryViewerProps> = ({
                         className={`overflow-hidden border-b border-slate-100 transition-[max-height] duration-200 md:flex md:min-h-0 md:flex-1 md:max-h-none md:flex-col md:overflow-hidden md:border-b-0 ${historyOpen ? 'max-h-[min(42vh,280px)]' : 'max-h-0 md:max-h-none'}`}
                     >
                         <div className="flex gap-2 overflow-x-auto p-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:hidden">
-                            {summaries.map((s, i) => (
+                            {summaryList.map((s, i) => (
                                 <VersionItem
                                     key={s.id}
                                     summary={s}
@@ -283,7 +284,7 @@ export const SummaryViewer: React.FC<SummaryViewerProps> = ({
                             ))}
                         </div>
                         <div className="custom-scrollbar hidden min-h-0 flex-1 flex-col space-y-2 overflow-y-auto p-3 md:flex">
-                            {summaries.map((s, i) => (
+                            {summaryList.map((s, i) => (
                                 <VersionItem
                                     key={s.id}
                                     summary={s}
@@ -295,7 +296,7 @@ export const SummaryViewer: React.FC<SummaryViewerProps> = ({
                         </div>
                     </div>
 
-                    {summaries.length > 1 && (
+                    {summaryList.length > 1 && (
                         <p className="hidden shrink-0 border-t border-slate-100 px-4 py-3 text-center text-[10px] text-slate-400 md:block">
                             ↑↓ arrow keys to navigate
                         </p>
@@ -330,9 +331,9 @@ export const SummaryViewer: React.FC<SummaryViewerProps> = ({
                                     <Clock className="w-3.5 h-3.5 text-slate-400" />
                                     {formatReadingTime(selectedSummary.summaryText)}
                                 </span>
-                                {summaries.length > 1 && (
+                                {summaryList.length > 1 && (
                                     <span className="text-xs font-medium text-blue-600 bg-blue-50 border border-blue-100 rounded-full px-2 py-0.5">
-                                        v{selectedIndex + 1} of {summaries.length}
+                                        v{selectedIndex + 1} of {summaryList.length}
                                     </span>
                                 )}
                             </div>
