@@ -14,7 +14,7 @@ export function useReaderSummary(activeChapter: Chapter | undefined) {
     const [loadingSummary, setLoadingSummary] = useState(false);
 
     const openSummaryView = useCallback((incoming?: ChapterSummary[]) => {
-        if (incoming) {
+        if (Array.isArray(incoming)) {
             setSummaries(incoming);
             setSummaryView(true);
             return;
