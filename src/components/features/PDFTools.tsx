@@ -15,6 +15,7 @@ import {
     markKeyIdeas,
     createIdeasExplanations,
     getApiErrorMessage,
+    clearAuthToken,
 } from '@/lib/api';
 import type { ChapterSummary } from '@/types';
 import { useJobCompletionSubscription, useToast, type RehydratedToolJobs } from '@/hooks';
@@ -73,6 +74,16 @@ const PDFTools: React.FC<PDFToolsProps> = ({
         }
     }, [pdfId, restoredPendingToolJobs]);
 
+    const handleAuthError = useCallback((err: unknown): boolean => {
+        const axiosErr = err as { response?: { status?: number } };
+        if (axiosErr.response?.status === 401) {
+            clearAuthToken();
+            showToast('Your session has expired. Please login again.', 'error');
+            return true;
+        }
+        return false;
+    }, [showToast]);
+
     const runAction = useCallback(
         async (id: string, action: () => Promise<void>, successMsg: string) => {
             setLoadingAction(id);
@@ -81,12 +92,14 @@ const PDFTools: React.FC<PDFToolsProps> = ({
                 showToast(successMsg, 'success');
             } catch (err) {
                 console.error(err);
-                showToast(`Error: ${id.replaceAll('-', ' ')} failed.`, 'error');
+                if (!handleAuthError(err)) {
+                    showToast(`Error: ${id.replaceAll('-', ' ')} failed.`, 'error');
+                }
             } finally {
                 setLoadingAction(null);
             }
         },
-        [showToast],
+        [showToast, handleAuthError],
     );
 
     const handleChapterSummary = async () => {
@@ -107,8 +120,9 @@ const PDFTools: React.FC<PDFToolsProps> = ({
             showToast('Chapter summary created!', 'success');
         } catch (err) {
             console.error(err);
-            const errorMessage = getApiErrorMessage(err, 'Error: chapter summary failed.');
-            showToast(errorMessage, 'error');
+            if (!handleAuthError(err)) {
+                showToast(getApiErrorMessage(err, 'Error: chapter summary failed.'), 'error');
+            }
         } finally {
             setLoadingAction(null);
         }
@@ -195,8 +209,9 @@ const PDFTools: React.FC<PDFToolsProps> = ({
             showToast('Key ideas have been marked!', 'success');
         } catch (err) {
             console.error(err);
-            const errorMessage = getApiErrorMessage(err, 'Error: key idea extraction failed.');
-            showToast(errorMessage, 'error');
+            if (!handleAuthError(err)) {
+                showToast(getApiErrorMessage(err, 'Error: key idea extraction failed.'), 'error');
+            }
         } finally {
             setLoadingAction(null);
         }
@@ -246,8 +261,9 @@ const PDFTools: React.FC<PDFToolsProps> = ({
             showToast('Explanations for chapter ideas are ready.', 'success');
         } catch (err) {
             console.error(err);
-            const errorMessage = getApiErrorMessage(err, 'Error: ideas explanation failed.');
-            showToast(errorMessage, 'error');
+            if (!handleAuthError(err)) {
+                showToast(getApiErrorMessage(err, 'Error: ideas explanation failed.'), 'error');
+            }
         } finally {
             setLoadingAction(null);
         }

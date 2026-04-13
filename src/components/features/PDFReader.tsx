@@ -428,7 +428,7 @@ export function PDFReaderShell() {
             sessionMode={session.mode}
             rehydratedToolJobs={rehydratedToolJobs}
             onJumpToChapter={handleJumpToChapter}
-            onSummaryUpdated={syncSummaries as unknown as (summary: unknown) => void}
+            onSummaryUpdated={openSummaryView}
             onQueueSummary={handleQueueSummary}
             onResolveSummaryQueueJob={handleResolveSummaryQueueJob}
             onQueueIdeaExtraction={handleQueueIdeaExtraction}
