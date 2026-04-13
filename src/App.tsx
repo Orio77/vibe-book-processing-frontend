@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useRef } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef } from 'react';
 import type { ReactElement } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { NavBar, ErrorBoundary, LoadingSpinner, NotFound, Toast } from '@/components/ui';
@@ -6,26 +6,9 @@ import { useJobCompletionSubscription, useToast } from '@/hooks';
 import { ROUTES } from '@/lib/constants';
 import type { ToastData } from '@/types';
 import { fetchQueueJob, isAuthenticated } from '@/lib/api';
+import { readPendingUploadJobIds, removePendingUploadJobId } from '@/lib/pendingUploadJobs';
 
-const PENDING_UPLOAD_JOB_IDS_KEY = 'pendingUploadJobIds';
-
-function readPendingUploadJobIds(): number[] {
-    try {
-        const raw = globalThis.localStorage.getItem(PENDING_UPLOAD_JOB_IDS_KEY);
-        if (!raw) return [];
-        const parsed = JSON.parse(raw) as unknown;
-        if (!Array.isArray(parsed)) return [];
-        return parsed
-            .map(Number)
-            .filter((item) => Number.isFinite(item));
-    } catch {
-        return [];
-    }
-}
-
-function writePendingUploadJobIds(jobIds: number[]): void {
-    globalThis.localStorage.setItem(PENDING_UPLOAD_JOB_IDS_KEY, JSON.stringify(jobIds));
-}
+const RECONCILE_INTERVAL_MS = 5000;
 
 // Lazy-loaded route components for code splitting
 const PDFList = lazy(() => import('@/components/features/PDFList'));
@@ -53,9 +36,8 @@ function App() {
     const { toast, showToast, dismissToast } = useToast();
     const authenticated = isAuthenticated();
 
-    const handleJobCompleted = useCallback(async (jobId: number) => {
-        const pendingJobIds = readPendingUploadJobIds();
-        if (!pendingJobIds.includes(jobId)) {
+    const resolvePendingUploadJob = useCallback(async (jobId: number, source: 'event' | 'reconcile') => {
+        if (!readPendingUploadJobIds().includes(jobId)) {
             return;
         }
 
@@ -64,25 +46,81 @@ function App() {
         }
 
         processingJobsRef.current.add(jobId);
+        let shouldRemove = false;
 
         try {
             const job = await fetchQueueJob(jobId);
 
             if (job.status === 'COMPLETED') {
+                shouldRemove = true;
                 showToast('Upload finished. Your book is now in the library.', 'success');
                 globalThis.dispatchEvent(new CustomEvent('pdf-library-refresh'));
-            } else {
+                return;
+            }
+
+            if (job.status === 'FAILED' || job.status === 'CANCELLED') {
+                shouldRemove = true;
                 showToast(job.errorText?.trim() || 'Upload failed while processing in queue.', 'error');
+            } else {
+                // Non-terminal status: keep job ID so reconciliation can retry later.
+                return;
             }
         } catch (error) {
-            console.error('Failed to process upload completion event:', error);
-            showToast('Received completion event but failed to resolve upload status.', 'error');
+            const status = (error as { response?: { status?: number } })?.response?.status;
+            if (status === 404) {
+                // Stale local entry (e.g., old environment/session) -> stop retrying forever.
+                removePendingUploadJobId(jobId);
+                return;
+            }
+
+            if (source === 'event') {
+                console.error('Failed to process upload completion event:', error);
+                showToast('Received completion event but failed to resolve upload status.', 'error');
+            } else {
+                console.warn('Failed to reconcile pending upload job:', jobId, error);
+            }
         } finally {
-            const current = readPendingUploadJobIds();
-            writePendingUploadJobIds(current.filter((id) => id !== jobId));
+            if (shouldRemove) {
+                removePendingUploadJobId(jobId);
+            }
             processingJobsRef.current.delete(jobId);
         }
     }, [showToast]);
+
+    const handleJobCompleted = useCallback(async (jobId: number) => {
+        await resolvePendingUploadJob(jobId, 'event');
+    }, [resolvePendingUploadJob]);
+
+    useEffect(() => {
+        if (!authenticated) {
+            return;
+        }
+
+        let cancelled = false;
+        let timeoutId: number | undefined;
+
+        const reconcile = async () => {
+            if (cancelled) return;
+
+            const pendingJobIds = readPendingUploadJobIds();
+            await Promise.all(
+                pendingJobIds.map((jobId) => resolvePendingUploadJob(jobId, 'reconcile')),
+            );
+
+            if (!cancelled) {
+                timeoutId = globalThis.setTimeout(reconcile, RECONCILE_INTERVAL_MS);
+            }
+        };
+
+        void reconcile();
+
+        return () => {
+            cancelled = true;
+            if (timeoutId !== undefined) {
+                globalThis.clearTimeout(timeoutId);
+            }
+        };
+    }, [authenticated, resolvePendingUploadJob]);
 
     useJobCompletionSubscription(handleJobCompleted, authenticated);
 

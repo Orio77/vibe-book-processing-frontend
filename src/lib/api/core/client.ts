@@ -12,10 +12,52 @@ const apiClient = axios.create({
     },
 });
 
+const API_SUFFIX_REGEX = /\/api(?:\/pdf)?$/;
+const ABSOLUTE_URL_REGEX = /^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//;
+
+function getBaseOriginForParsing(): string {
+    if (typeof globalThis.location !== 'undefined') {
+        return globalThis.location.origin;
+    }
+    return 'http://localhost';
+}
+
+function trimTrailingSlashes(path: string): string {
+    return path.replace(/\/+$/, '');
+}
+
+function removeApiSuffix(path: string): string {
+    const normalized = trimTrailingSlashes(path);
+    return normalized.replace(API_SUFFIX_REGEX, '');
+}
+
+function isAbsoluteUrl(value: string): boolean {
+    return ABSOLUTE_URL_REGEX.test(value);
+}
+
 export function resolveApiRootBaseUrl(): string | undefined {
-    const configured = import.meta.env.VITE_API_BASE_URL;
+    const configured = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim();
     if (!configured) return undefined;
-    return configured.replace(/\/api\/pdf\/?$/, '');
+
+    const absolute = isAbsoluteUrl(configured);
+    const parsed = new URL(configured, getBaseOriginForParsing());
+    const rootPath = removeApiSuffix(parsed.pathname);
+
+    if (!absolute) {
+        return rootPath || '/';
+    }
+
+    return `${parsed.origin}${rootPath}`;
+}
+
+export function resolveWsEndpoint(): string {
+    const root = resolveApiRootBaseUrl();
+    if (!root) {
+        return '/ws';
+    }
+
+    const normalizedRoot = trimTrailingSlashes(root);
+    return `${normalizedRoot}/ws`;
 }
 
 apiClient.interceptors.request.use((config) => {

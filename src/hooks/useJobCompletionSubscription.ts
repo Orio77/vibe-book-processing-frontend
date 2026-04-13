@@ -1,17 +1,8 @@
 import { useEffect } from 'react';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
-
-function resolveWsEndpoint(): string {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL as string | undefined;
-
-    if (!baseUrl) {
-        return '/ws';
-    }
-
-    const origin = new URL(baseUrl).origin;
-    return `${origin}/ws`;
-}
+import { getAuthToken } from '../lib/api';
+import { resolveWsEndpoint } from '../lib/api/core/client';
 
 export function useJobCompletionSubscription(
     onCompleted: (jobId: number) => void,
@@ -20,16 +11,37 @@ export function useJobCompletionSubscription(
     useEffect(() => {
         if (!enabled) return;
 
+        const buildConnectHeaders = (): Record<string, string> => {
+            const token = getAuthToken();
+            if (!token) return {};
+            return { Authorization: `Bearer ${token}` };
+        };
+
         const endpoint = resolveWsEndpoint();
         const client = new Client({
             webSocketFactory: () => new SockJS(endpoint),
+            connectHeaders: buildConnectHeaders(),
             reconnectDelay: 4000,
             heartbeatIncoming: 15000,
             heartbeatOutgoing: 15000,
+            beforeConnect: () => {
+                client.connectHeaders = buildConnectHeaders();
+            },
+            onStompError: (frame) => {
+                console.error('STOMP job subscription error.', frame.headers, frame.body);
+            },
+            onWebSocketError: (event) => {
+                console.error('WebSocket job subscription error.', event);
+            },
+            onWebSocketClose: (event) => {
+                if (!event.wasClean) {
+                    console.warn('Job completion socket closed unexpectedly.', event.code, event.reason);
+                }
+            },
         });
 
         client.onConnect = () => {
-            client.subscribe('/api/topic/jobs/completed', (message) => {
+            client.subscribe('/user/queue/jobs/completed', (message) => {
                 const parsed = Number(message.body);
                 if (Number.isFinite(parsed)) {
                     onCompleted(parsed);

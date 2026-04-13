@@ -8,29 +8,11 @@ import {
     uploadPdf,
     clearAuthToken,
 } from '@/lib/api';
+import { addPendingUploadJobId } from '@/lib/pendingUploadJobs';
 import { ROUTES } from '@/lib/constants';
 import { ErrorAlert } from '@/components/ui';
 import { Dropzone, ChapterRangeEditor } from './upload';
 import type { ChapterPageRange, ChapterRangeInput } from '@/types';
-
-const PENDING_UPLOAD_JOB_IDS_KEY = 'pendingUploadJobIds';
-
-function addPendingUploadJobId(jobId: number): void {
-    try {
-        const raw = globalThis.localStorage.getItem(PENDING_UPLOAD_JOB_IDS_KEY);
-        const parsed = raw ? JSON.parse(raw) : [];
-        const ids = Array.isArray(parsed)
-            ? parsed.map(Number).filter((item) => Number.isFinite(item))
-            : [];
-
-        if (!ids.includes(jobId)) {
-            ids.push(jobId);
-            globalThis.localStorage.setItem(PENDING_UPLOAD_JOB_IDS_KEY, JSON.stringify(ids));
-        }
-    } catch {
-        globalThis.localStorage.setItem(PENDING_UPLOAD_JOB_IDS_KEY, JSON.stringify([jobId]));
-    }
-}
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
     'pdfjs-dist/build/pdf.worker.mjs',
