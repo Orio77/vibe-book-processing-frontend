@@ -328,7 +328,7 @@ function ReaderStandardLayer(props: Readonly<any>) {
                 </div>
 
                 {isMarkingMode && markedSentences.length > 0 && (
-                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white shadow-xl border border-slate-200 rounded-xl p-4 z-40 flex flex-col items-center animate-in slide-in-from-bottom flex-wrap min-w-[300px]">
+                    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white shadow-xl border border-slate-200 rounded-xl p-4 z-40 flex flex-col items-center animate-in slide-in-from-bottom flex-wrap min-w-[300px]">
                         <div className="flex items-center space-x-3 mb-2">
                             <span className="text-sm font-medium text-slate-600 mr-2">
                                 {markedSentences.length} sentence{markedSentences.length !== 1 && 's'} selected
