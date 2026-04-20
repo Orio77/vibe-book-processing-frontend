@@ -109,7 +109,9 @@ export function RequestQueuePanel({ requests, onSelectRequest }: RequestQueuePan
                             <Clock3 className="w-3.5 h-3.5" />
                             {formatTimestamp(request.timestamp)}
                         </span>
-                        <span>{request.sentences.length} context sentence{request.sentences.length === 1 ? '' : 's'}</span>
+                        {(request.type === 'query' || request.type === 'explain') && (
+                            <span>{request.sentences.length} context sentence{request.sentences.length === 1 ? '' : 's'}</span>
+                        )}
                     </div>
                 </button>
             ))}
