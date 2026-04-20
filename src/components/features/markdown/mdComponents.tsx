@@ -10,7 +10,7 @@ import type ReactMarkdown from 'react-markdown';
  * `accentColor` lets consumers tint bullet dots and blockquote borders
  * (default: blue for summaries, teal for chat, etc.).
  */
-function createMdComponents(
+export function createMdComponents(
     accentColor: 'blue' | 'teal' = 'blue',
 ): React.ComponentProps<typeof ReactMarkdown>['components'] {
     const dotColor = accentColor === 'teal' ? 'bg-teal-400' : 'bg-blue-400';

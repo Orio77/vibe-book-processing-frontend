@@ -8,6 +8,8 @@ import {
     Clock,
     ChevronDown,
     ChevronUp,
+    ChevronLeft,
+    ChevronRight,
     AlertTriangle,
     Copy,
     Check,
@@ -245,7 +247,7 @@ export const SummaryViewer: React.FC<SummaryViewerProps> = ({
             {/* ── Versions: horizontal strip on mobile, left sidebar on md+ ── */}
             {summaryList.length > 0 && (
                 <aside
-                    className="flex min-h-0 shrink-0 flex-col border-slate-200 bg-slate-50/90 md:h-full md:w-56 md:border-b-0 md:border-r lg:w-64 xl:w-72"
+                    className={`flex min-h-0 shrink-0 flex-col border-slate-200 bg-slate-50/90 md:h-full md:border-b-0 md:border-r ${historyOpen ? 'md:flex md:w-56 lg:w-64 xl:w-72' : 'md:hidden'}`}
                     aria-label="Summary versions"
                 >
                     <button
@@ -264,12 +266,15 @@ export const SummaryViewer: React.FC<SummaryViewerProps> = ({
                                 ? <ChevronUp className="h-3.5 w-3.5 text-slate-400 md:hidden" />
                                 : <ChevronDown className="h-3.5 w-3.5 text-slate-400 md:hidden" />
                             }
+                            {historyOpen && (
+                                <ChevronLeft className="hidden md:block h-4 w-4 text-slate-400" />
+                            )}
                         </div>
                     </button>
 
                     {/* Mobile: collapsible horizontal scroller; md+: full-height vertical list */}
                     <div
-                        className={`overflow-hidden border-b border-slate-100 transition-[max-height] duration-200 md:flex md:min-h-0 md:flex-1 md:max-h-none md:flex-col md:overflow-hidden md:border-b-0 ${historyOpen ? 'max-h-[min(42vh,280px)]' : 'max-h-0 md:max-h-none'}`}
+                        className={`overflow-hidden border-b border-slate-100 transition-[max-height] duration-200 md:flex md:min-h-0 md:flex-1 md:max-h-none md:flex-col md:overflow-hidden md:border-b-0 ${historyOpen ? 'max-h-[min(42vh,280px)]' : 'max-h-0'}`}
                     >
                         <div className="flex gap-2 overflow-x-auto p-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:hidden">
                             {summaryList.map((s, i) => (
@@ -323,6 +328,15 @@ export const SummaryViewer: React.FC<SummaryViewerProps> = ({
                         {/* Meta + actions bar */}
                         <div className="flex flex-wrap items-center justify-between gap-3 mb-8 pb-5 border-b border-slate-100">
                             <div className="flex items-center gap-4 text-sm text-slate-500">
+                                {!historyOpen && summaryList.length > 0 && (
+                                    <button
+                                        onClick={() => setHistoryOpen(true)}
+                                        className="hidden md:flex items-center gap-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-100 rounded-full px-2.5 py-1 transition-colors hover:bg-blue-100"
+                                    >
+                                        <ChevronRight className="w-3.5 h-3.5" />
+                                        Versions ({summaryList.length})
+                                    </button>
+                                )}
                                 <span className="flex items-center gap-1.5">
                                     <FileText className="w-3.5 h-3.5 text-slate-400" />
                                     {formatWordCount(selectedSummary.summaryText)}
