@@ -38,9 +38,9 @@ export function ChapterRangeEditor({
             </div>
 
             <div className="space-y-3">
-                {ranges.map((range) => (
+                {ranges.map((range, index) => (
                     <div
-                        key={`${range.startPage}-${range.endPage}`}
+                        key={range.id}
                         className="flex items-center gap-3 bg-white p-2 rounded-lg border border-slate-200 shadow-sm animate-in fade-in slide-in-from-left-2"
                     >
                         <div className="flex-1 flex items-center gap-2">
@@ -53,8 +53,7 @@ export function ChapterRangeEditor({
                                     min="1"
                                     value={range.startPage}
                                     onChange={(e) => {
-                                        const idx = ranges.indexOf(range);
-                                        onUpdate(idx, 'startPage', e.target.value);
+                                        onUpdate(index, 'startPage', e.target.value);
                                     }}
                                     className="w-full pl-12 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                                     disabled={uploading}
@@ -70,8 +69,7 @@ export function ChapterRangeEditor({
                                     min="1"
                                     value={range.endPage}
                                     onChange={(e) => {
-                                        const idx = ranges.indexOf(range);
-                                        onUpdate(idx, 'endPage', e.target.value);
+                                        onUpdate(index, 'endPage', e.target.value);
                                     }}
                                     className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                                     disabled={uploading}
@@ -81,8 +79,7 @@ export function ChapterRangeEditor({
                         <button
                             type="button"
                             onClick={() => {
-                                const idx = ranges.indexOf(range);
-                                onRemove(idx);
+                                onRemove(index);
                             }}
                             className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
                             title="Remove chapter"

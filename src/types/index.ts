@@ -33,6 +33,8 @@ export interface ChapterPageRange {
 }
 
 export interface ChapterRangeInput {
+    /** Stable client-only key for list reconciliation (not sent to the API). */
+    readonly id: string;
     startPage: string;
     endPage: string;
 }

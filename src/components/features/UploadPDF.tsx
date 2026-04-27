@@ -90,7 +90,11 @@ const UploadPDF = () => {
     const addChapterRange = () => {
         setChapterRanges((prev) => [
             ...prev,
-            { startPage: '', endPage: pageCount == null ? '' : String(pageCount) },
+            {
+                id: crypto.randomUUID(),
+                startPage: '',
+                endPage: pageCount == null ? '' : String(pageCount),
+            },
         ]);
     };
 
