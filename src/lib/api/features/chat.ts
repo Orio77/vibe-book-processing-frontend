@@ -1,4 +1,4 @@
-import type { PDFChatResponse } from '@/types';
+import type { PDFChatResponse } from '$lib/types';
 import apiClient from '../core/client';
 import { coerceNumber, emptyOn204, unwrapArrayPayload } from '../core/helpers';
 

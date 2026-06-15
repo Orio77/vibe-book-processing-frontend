@@ -1,5 +1,5 @@
-import type { Chapter } from '@/types';
-import type { OfflineBookPayload } from '@/types/offlineBundle';
+import type { Chapter } from '$lib/types';
+import type { OfflineBookPayload } from '$lib/types/offlineBundle';
 
 /**
  * Concatenates all sentences for `chapter` from an offline pack (pages startPage..endPage),

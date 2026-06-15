@@ -1,5 +1,5 @@
 import { putOfflineBookRecord } from './libraryDb';
-import type { OfflineBookPayload, OfflineBundleManifest } from '@/types/offlineBundle';
+import type { OfflineBookPayload, OfflineBundleManifest } from '$lib/types/offlineBundle';
 
 /** Writes a freshly built pack into IndexedDB (same shape as ZIP import). */
 export async function saveOfflineBundleToLibrary(

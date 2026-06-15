@@ -1,5 +1,6 @@
 import type React from 'react';
 import { X } from 'lucide-react';
+import { useState } from 'react';
 
 interface ModalProps {
     isOpen: boolean;
@@ -9,11 +10,23 @@ interface ModalProps {
 }
 
 export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
-    if (!isOpen) return null;
+    const [mounted, setMounted] = useState(isOpen);
+
+    if (isOpen && !mounted) {
+        setMounted(true);
+    }
+
+    console.log(mounted, title);
+    
+
+    if (!mounted) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm ${isOpen ? 'animate-in fade-in' : 'animate-out fade-out'} duration-200`}
+         onClick={onClose}
+         
+         onAnimationEnd={() => { if (!isOpen) setMounted(false); }}>
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom duration-200" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50/50">
                     <h3 className="text-lg font-semibold text-slate-800">{title}</h3>
                     <button

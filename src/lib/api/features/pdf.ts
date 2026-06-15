@@ -1,4 +1,4 @@
-import type { ChapterPageRange, PDF } from '@/types';
+import type { ChapterPageRange, PDF } from '$lib/types';
 import apiClient, { resolveApiRootBaseUrl } from '../core/client';
 import { emptyOn204 } from '../core/helpers';
 
@@ -50,4 +50,11 @@ export async function fetchQueueJob(id: number): Promise<QueueJob> {
         baseURL: resolveApiRootBaseUrl(),
     });
     return res.data;
+}
+
+export async function fetchAllJobs(): Promise<QueueJob[]> {
+    const res = await apiClient.get<unknown>(`/api/job`, {
+        baseURL: resolveApiRootBaseUrl(),
+    });
+    return emptyOn204(res) as QueueJob[];
 }
