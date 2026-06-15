@@ -2,9 +2,7 @@
   import svelteLogo from './assets/svelte.svg'
   import viteLogo from './assets/vite.svg'
   import heroImg from './assets/hero.png'
-  import Counter from './lib/Counter.svelte'
 </script>
-
 <section id="center">
   <div class="hero">
     <img src={heroImg} class="base" width="170" height="179" alt="" />
@@ -15,7 +13,6 @@
     <h1>Get started</h1>
     <p>Edit <code>src/App.svelte</code> and save to test <code>HMR</code></p>
   </div>
-  <Counter />
 </section>
 
 <div class="ticks"></div>

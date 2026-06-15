@@ -1,0 +1,38 @@
+Svelte App Screens needed to cover all API endpoints:
+
+1. Start screens
+- Login form (/auth/login)
+- Register form (/auth/register)
+
+2. Library Dashboard
+- List all books/PDFs (/api/pdf/get/all)
+- Upload new book form + file picker (/api/pdf/upload)
+- Delete book button (/api/pdf/delete/{pdfId})
+
+3. Reader / Book View (The main interface)
+   Must include the following panels/components:
+
+   a) Text Viewer
+   - Chapter list sidebar (/api/pdf/chapter/get/all/{pdfId})
+   - Sentence/Text display area (/api/pdf/sentence/get/{pdfId} & /ranges)
+
+   b) Chat Panel
+   - Chat history for chapter (/api/pdf/chat/response/get/all/{chapterId})
+   - Ask new question input + selected sentences (/api/pdf/chat)
+   - Edit/Delete response buttons (/api/pdf/chat/response/edit & delete)
+
+   c) Summaries Panel
+   - Request new summary button (/api/pdf/process/chapter/summary)
+   - View chapter summaries (/api/pdf/process/chapter/{chapterId}/summary)
+   - Delete summary button
+
+   d) Key Ideas & Explanations Panel
+   - Extract ideas button (/api/pdf/process/idea/extract)
+   - List extracted ideas and their arguments (/api/pdf/process/idea/get/all/{chapterId} & /argument/get/)
+   - Delete idea button
+   - Generate explanation for idea(s) (/api/pdf/process/idea/{ideaId}/explanation)
+   - View, edit, and delete explanations (/api/pdf/process/idea/explanations)
+
+4. Global Activity / Job Status Component (Header/Sidebar)
+- Shows running background tasks (uploading, summarizing, chatting)
+- Polls job queue endpoints or uses WebSockets (/api/job & /ws)
