@@ -53,11 +53,7 @@
 
 <svelte:window onpointerup={() => selectionStore.stopDragging()} onscroll={handleScroll} />
 
-<div class="w-full {textWidthClass} flex justify-start mb-4 transition-all duration-300 ease-in-out">
-    <label for="reader-drawer" class="btn btn-sm btn-ghost lg:hidden mr-2">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-5 h-5 stroke-current"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
-    </label>
-</div>
+
 
 <div class="w-full {textWidthClass} transition-all duration-300 ease-in-out grid grid-cols-1">
     {#if isLoading && !pdf}

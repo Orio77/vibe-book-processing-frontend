@@ -27,14 +27,14 @@
     }
 </script>
 
-<Dropdown contentClass="w-80 p-5 space-y-5">
+<Dropdown contentClass="!fixed !top-20 !left-1/2 !-translate-x-1/2 !w-[95vw] sm:!absolute sm:!top-full sm:!left-auto sm:!right-0 sm:!translate-x-0 sm:!w-80 max-w-[360px] p-5 space-y-5">
     {#snippet trigger()}
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
-        Settings
+        <span class="hidden md:inline">Settings</span>
         <svg width="12px" height="12px" class="inline-block h-2 w-2 fill-current opacity-60"
             xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2048 2048">
             <path d="M1799 349l242 241-1017 1017L7 590l242-241 775 775 775-775z"></path>
@@ -116,40 +116,6 @@
                         {opt.label}
                     </button>
                 {/each}
-            </div>
-        </div>
-
-        <!-- Scrolling -->
-        <div class="space-y-2">
-            <span class="text-sm font-semibold text-base-content">Scrolling</span>
-            <div class="flex gap-2">
-                {#each scrollOptions as opt (opt.value)}
-                    <button
-                        class="btn btn-sm flex-1 {settingsStore.scrollMode === opt.value ? 'btn-primary' : 'btn-ghost border-base-300'}"
-                        onclick={() => settingsStore.setScrollMode(opt.value)}
-                    >
-                        {opt.label}
-                    </button>
-                {/each}
-            </div>
-        </div>
-
-        <!-- Page flipping -->
-        <div class="space-y-2">
-            <span class="text-sm font-semibold text-base-content">Page flipping</span>
-            <div class="flex gap-2">
-                <button
-                    class="btn btn-sm {settingsStore.pageFlipping ? 'btn-primary' : 'btn-ghost border-base-300'}"
-                    onclick={() => settingsStore.setPageFlipping(true)}
-                >
-                    Enabled
-                </button>
-                <button
-                    class="btn btn-sm {!settingsStore.pageFlipping ? 'btn-primary' : 'btn-ghost border-base-300'}"
-                    onclick={() => settingsStore.setPageFlipping(false)}
-                >
-                    Disabled
-                </button>
             </div>
         </div>
 

@@ -12,7 +12,7 @@
 <div class="tabs tabs-boxed bg-base-200">
     {#each tabs as tab}
         <button 
-            class="tab p-0 flex-1 flex gap-2 transition-all duration-200 rounded-sm {activeTab === tab.id ? 'tab-active bg-primary text-primary-content' : 'hover:bg-base-300'}"
+            class="tab p-0 flex-1 flex gap-2 transition-all duration-200 {activeTab === tab.id ? 'tab-active bg-primary text-primary-content' : 'hover:bg-base-300'}"
             onclick={() => activeTab = tab.id}
         >
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -3,6 +3,7 @@
     import LoadingBookCard from '../components/library/LoadingBookCard.svelte';
     import { navigate } from '../lib/navigation';
     import { createLibraryStore, type UnifiedBook } from '$lib/stores/library.svelte';
+    import ErrorAlert from '../components/common/ErrorAlert.svelte';
     import ExportOfflinePackModal, { type OfflineExportConfirmOptions, type OfflineLibraryUpdateTarget } from '../components/library/ExportOfflinePackModal.svelte';
     import { 
         listOfflineBookRecordsForSourcePdf, 
@@ -21,13 +22,14 @@
     let modalBusy = $state(false);
     let modalUpdateTargets = $state<OfflineLibraryUpdateTarget[]>([]);
     let selectedBookForExport = $state<UnifiedBook | null>(null);
+    let errorMsg = $state<string | null>(null);
 
     async function handleDownloadClick(book: UnifiedBook) {
         if (book.id.toString().startsWith('offline-')) {
             const exportId = book.id.toString().replace('offline-', '');
             const record = await getOfflineBookRecord(exportId);
             if (!record) {
-                alert('Offline record not found');
+                errorMsg = 'Offline record not found';
                 return;
             }
             const blob = exportOfflineRecordToZipBlob(record);
@@ -86,7 +88,7 @@
             modalOpen = false;
         } catch (e) {
             console.error(e);
-            alert('Failed to export offline pack: ' + String(e));
+            errorMsg = 'Failed to export offline pack: ' + String(e);
         } finally {
             modalBusy = false;
         }
@@ -94,6 +96,9 @@
 </script>
 
 <div class="py-4">
+    <div class="max-w-xl mx-auto">
+        <ErrorAlert message={errorMsg} onDismiss={() => errorMsg = null} />
+    </div>
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
         <div>
             <h1 class="text-3xl font-bold text-base-content mb-1">Your Library</h1>
@@ -105,7 +110,7 @@
         </button>
     </div>
 
-    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
         {#if library.isLoading}
             <LoadingBookCard />
             <LoadingBookCard />

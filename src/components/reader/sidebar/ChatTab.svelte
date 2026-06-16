@@ -56,8 +56,30 @@
 
     <!-- Input Area -->
     <div class="p-4 border-t border-base-300 bg-base-100 flex-shrink-0">
+        <!-- Selection Controls -->
+        <div class="flex items-center justify-between mb-3">
+            <label class="label cursor-pointer p-0 gap-2">
+                <input 
+                    type="checkbox" 
+                    class="toggle toggle-primary toggle-sm" 
+                    checked={selectionStore.isSelectionMode}
+                    onchange={() => selectionStore.toggleSelectionMode()}
+                />
+                <span class="label-text text-sm font-medium">Text Selection</span>
+            </label>
+            
+            {#if selectionStore.count > 0}
+                <button 
+                    class="btn btn-ghost btn-xs text-base-content/60"
+                    onclick={() => selectionStore.clearSelection()}
+                >
+                    Clear selection
+                </button>
+            {/if}
+        </div>
+
         {#if selectionStore.count > 0}
-            <div class="badge badge-primary badge-outline badge-sm mb-2 w-full justify-start py-2 h-auto whitespace-normal" transition:slide>
+            <div class="badge badge-primary badge-outline badge-sm mb-3 w-full justify-start py-2 h-auto whitespace-normal" transition:slide>
                 Context: {selectionStore.count} selected sentence{selectionStore.count === 1 ? '' : 's'}
             </div>
         {/if}

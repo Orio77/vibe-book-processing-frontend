@@ -8,8 +8,8 @@
     const location = useLocation();
 </script>
 
-<div class="navbar bg-base-100/95 backdrop-blur border-b border-base-200 px-4 md:px-8 sticky top-0 z-50">
-    <div class="flex-1 flex flex-row gap-8 items-center">
+<div class="navbar bg-base-100/95 backdrop-blur border-b border-base-200 px-2 sm:px-4 md:px-8 sticky top-0 z-50">
+    <div class="flex-1 flex flex-row gap-2 sm:gap-4 md:gap-8 items-center">
         <!-- Logo -->
         <button
             class="flex items-center gap-2 cursor-pointer appearance-none bg-transparent border-none text-left"
@@ -30,11 +30,11 @@
                     /></svg
                 >
             </div>
-            <span class="text-xl font-bold">BookProcessing</span>
+            <span class="text-lg md:text-xl font-bold hidden sm:inline">BookProcessing</span>
         </button>
 
         <!-- Links -->
-        <div class="hidden md:flex gap-2">
+        <div class="flex gap-1 md:gap-2">
             <button
                 class="btn btn-sm {$location.pathname === '/library' ? 'btn-primary' : 'btn-ghost text-base-content/70 hover:text-primary'}"
                 onclick={() => navigate("/library")}
@@ -52,7 +52,7 @@
                         d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
                     /></svg
                 >
-                Library
+                <span class="hidden md:inline">Library</span>
             </button>
             <button
                 class="btn btn-sm {$location.pathname === '/upload' ? 'btn-primary' : 'btn-ghost text-base-content/70 hover:text-primary'}"
@@ -71,7 +71,7 @@
                         d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
                     /></svg
                 >
-                Upload Book
+                <span class="hidden md:inline">Upload Book</span>
             </button>
         </div>
     </div>
@@ -97,7 +97,7 @@
                         d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
                     />
                 </svg>
-                Logout
+                <span class="hidden md:inline">Logout</span>
             </button>
         {/if}
     </div>

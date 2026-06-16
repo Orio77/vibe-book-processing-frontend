@@ -4,6 +4,8 @@
     import { uploadPdf } from '$lib/api/features/pdf';
     import { navigate } from '../lib/navigation';
     import { addPendingUploadJobId } from '$lib/pendingUploadJobs';
+    import { parseOfflineBundleZip, saveOfflineBundleToLibrary } from '$lib/offline';
+    import ErrorAlert from '../components/common/ErrorAlert.svelte';
     import * as pdfjsLib from 'pdfjs-dist';
 
     pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -32,9 +34,25 @@
         pdfPageCount = null;
         dividers = [];
         fileError = null;
+
+        if (selected.name.toLowerCase().endsWith('.zip') || selected.type === 'application/zip' || selected.type === 'application/x-zip-compressed') {
+            try {
+                isUploading = true;
+                const buffer = await selected.arrayBuffer();
+                const payload = await parseOfflineBundleZip(buffer);
+                await saveOfflineBundleToLibrary(payload.manifest, payload.book, 1);
+                navigate('/library');
+            } catch (e) {
+                console.error("Failed to load ZIP pack", e);
+                fileError = "Failed to load offline ZIP pack: " + String(e);
+            } finally {
+                isUploading = false;
+            }
+            return;
+        }
         
         if (selected.type !== 'application/pdf') {
-            fileError = 'Please upload a valid PDF file.';
+            fileError = 'Please upload a valid PDF or offline ZIP file.';
             return;
         }
         if (selected.size > 50 * 1024 * 1024) {
@@ -80,7 +98,7 @@
             navigate('/library');
         } catch (e) {
             console.error("Upload failed", e);
-            alert("Upload failed. Check console for details.");
+            fileError = "Upload failed. Check console for details.";
             isUploading = false;
         }
     }
@@ -88,16 +106,13 @@
 
 <div class="max-w-4xl mx-auto py-8">
     <div class="mb-8 text-center">
-        <h1 class="text-3xl font-bold text-base-content mb-2">Upload New PDF</h1>
+        <h1 class="text-3xl font-bold text-base-content mb-2">Upload New Book</h1>
         <p class="text-base-content/60">Select a book and define its chapters for processing.</p>
     </div>
 
-    {#if fileError}
-        <div class="alert alert-error mb-6 max-w-xl mx-auto shadow-sm">
-            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            <span>{fileError}</span>
-        </div>
-    {/if}
+    <div class="max-w-xl mx-auto">
+        <ErrorAlert message={fileError} onDismiss={() => fileError = null} />
+    </div>
 
     <div class="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
         <!-- File Dropzone (Top) -->

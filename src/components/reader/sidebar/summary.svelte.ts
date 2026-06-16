@@ -5,7 +5,7 @@ import type { Chapter, ChapterSummary } from '$lib/types';
 export class SummaryState {
     getChapter: () => Chapter;
     summaries = $state<ChapterSummary[]>([]);
-    isLoading = $state(false);
+    isLoading = $state(true);
     error = $state('');
 
     constructor(getChapter: () => Chapter) {

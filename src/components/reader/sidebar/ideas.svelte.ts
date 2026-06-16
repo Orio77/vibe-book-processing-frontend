@@ -12,7 +12,7 @@ export class IdeasState {
     ideas = $state<IdeaWithSentences[]>([]);
     explanations = $state<Record<number, IdeaExplanationDTO[]>>({});
     expandedIdea = $state<number | null>(null);
-    isLoading = $state(false);
+    isLoading = $state(true);
     error = $state('');
 
     constructor(getChapter: () => Chapter) {

@@ -17,7 +17,7 @@
     ];
 </script>
 
-<Dropdown contentClass="w-52 p-2">
+<Dropdown contentClass="!fixed !top-20 !left-1/2 !-translate-x-1/2 !w-[95vw] sm:!absolute sm:!top-full sm:!left-auto sm:!right-0 sm:!translate-x-0 sm:!w-52 max-w-[360px] p-2">
     {#snippet trigger()}
         <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -33,7 +33,7 @@
                 d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
             />
         </svg>
-        Theme
+        <span class="hidden md:inline">Theme</span>
         <svg
             width="12px"
             height="12px"

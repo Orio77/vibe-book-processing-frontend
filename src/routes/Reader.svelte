@@ -10,7 +10,6 @@
     import ReaderProgressBar from "../components/reader/ReaderProgressBar.svelte";
     import ReaderSidebar from "../components/reader/ReaderSidebar.svelte";
     import ReaderContent from "../components/reader/ReaderContent.svelte";
-    import SelectionToolbar from "../components/reader/SelectionToolbar.svelte";
     import { stompStore } from "$lib/stores/stomp.svelte";
 
     import { selectionStore } from "$lib/stores/selection.svelte";
@@ -97,9 +96,37 @@
             selectionStore.setSelectionMode(false);
         };
     });
+
+    let touchStartX = 0;
+    let touchEndX = 0;
+    const SWIPE_THRESHOLD = 80; // pixels needed to count as a swipe
+
+    function handleTouchStart(e: TouchEvent) {
+        touchStartX = e.changedTouches[0].screenX;
+    }
+
+    function handleTouchEnd(e: TouchEvent) {
+        touchEndX = e.changedTouches[0].screenX;
+
+        const drawer = document.getElementById('reader-drawer') as HTMLInputElement;
+        if (!drawer) return;
+
+        // Swipe right -> Open drawer
+        if (touchEndX - touchStartX > SWIPE_THRESHOLD) {
+            drawer.checked = true;
+        } 
+        // Swipe left -> Close drawer
+        else if (touchStartX - touchEndX > SWIPE_THRESHOLD) {
+            drawer.checked = false;
+        }
+    }
 </script>
 
-<div class="drawer lg:drawer-open flex-grow">
+<div 
+    class="drawer lg:drawer-open flex-grow"
+    ontouchstart={handleTouchStart}
+    ontouchend={handleTouchEnd}
+>
     <input id="reader-drawer" type="checkbox" class="drawer-toggle" />
 
     <div
@@ -116,8 +143,6 @@
             {isChapterLoading}
             {loadChapter}
         />
-
-        <SelectionToolbar />
     </div>
 
     <ReaderSidebar {pdf} {chapters} {currentChapter} {isLoading} {loadChapter} {sentences} />

@@ -13,7 +13,7 @@
 <div class="flex flex-col h-full overflow-y-auto p-4 space-y-6">
     <div class="flex justify-between items-center">
         <h2 class="text-xl font-bold">Key Ideas</h2>
-        {#if !state.isExtracting && state.ideas.length === 0}
+        {#if !state.isLoading && !state.isExtracting && state.ideas.length === 0}
             <button 
                 class="btn btn-primary btn-sm"
                 onclick={() => state.handleExtract()}

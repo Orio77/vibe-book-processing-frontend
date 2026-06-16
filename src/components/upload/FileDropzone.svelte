@@ -42,7 +42,7 @@
     <input
         id="file-upload"
         type="file"
-        accept="application/pdf"
+        accept="application/pdf,application/zip,.zip"
         class="hidden"
         onchange={handleFileSelect}
     />
@@ -110,7 +110,7 @@
                 /></svg
             >
         </div>
-        <p class="font-medium">Drag & drop your PDF here</p>
+        <p class="font-medium">Drag & drop your PDF or ZIP pack here</p>
         <p class="text-sm text-base-content/50 mt-1">
             or click to browse from your computer
         </p>
