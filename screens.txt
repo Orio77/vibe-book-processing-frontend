@@ -1,15 +1,21 @@
 Svelte App Screens needed to cover all API endpoints:
 
 1. Start screens
+- Landing/home page (landing.svelte)
 - Login form (/auth/login)
 - Register form (/auth/register)
+- Offline Mode / Open Local Library (bypass auth entirely)
 
 2. Library Dashboard
-- List all books/PDFs (/api/pdf/get/all)
-- Upload new book form + file picker (/api/pdf/upload)
-- Delete book button (/api/pdf/delete/{pdfId})
+- Cloud/Offline Toggle (Switch between API-fetched books and local IndexedDB books)
+- List all books/PDFs (/api/pdf/get/all OR from IDB)
+- Upload new book to Cloud (/api/pdf/upload)
+- Import local .zip Bundle to Offline Library
+- Export book to .zip Bundle
+- Delete book button (/api/pdf/delete/{pdfId} OR from IDB)
 
 3. Reader / Book View (The main interface)
+   *(Note: When in Offline Mode, all panels read directly from IndexedDB and use local AI proxies instead of backend APIs)*
    Must include the following panels/components:
 
    a) Text Viewer

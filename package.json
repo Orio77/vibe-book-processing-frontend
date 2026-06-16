@@ -20,6 +20,7 @@
     "globals": "^17.6.0",
     "svelte": "^5.56.3",
     "svelte-check": "^4.4.8",
+    "svelte-routing": "^2.13.0",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.61.1",
     "vite": "^8.0.12",
@@ -31,6 +32,7 @@
     "daisyui": "^5.5.23",
     "fflate": "^0.8.3",
     "idb": "^8.0.3",
+    "pdfjs-dist": "^6.0.227",
     "tailwindcss": "^4.3.1"
   }
 }

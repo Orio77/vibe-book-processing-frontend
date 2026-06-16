@@ -1,0 +1,45 @@
+Svelte App Components Needed
+
+1. Layout & Global Components
+- Layout.svelte (Main shell, handles auth state & theme routing)
+- Navbar.svelte (Top navigation, user profile, cloud/offline indicator)
+- JobQueueToast.svelte / GlobalActivity.svelte (To show background job progress)
+- Modal.svelte (Generic daisyUI modal wrapper)
+- ErrorAlert.svelte (Generic daisyUI alert wrapper)
+
+2. Authentication
+- LoginForm.svelte
+- RegisterForm.svelte
+
+3. Library Dashboard
+- LibraryTabs.svelte (Toggle between Cloud and Offline books)
+- BookCard.svelte (Displays a single book's metadata)
+- BookGrid.svelte (Grid layout for BookCards)
+- PdfUploadDropzone.svelte (For uploading new PDFs to the cloud API)
+- OfflineBundleImport.svelte (For dragging and dropping .zip bundles into IndexedDB)
+
+4. Reader View: Core
+- ReaderLayout.svelte (Manages the split-pane view for reading vs sidebars)
+- ChapterSidebar.svelte (List of chapters for navigation)
+- TextPageViewer.svelte (Displays the sentences of the current chapter)
+- SentenceElement.svelte (A single sentence, clickable for context selection)
+- ReaderToolbar.svelte (Export to ZIP, change text size, toggle panels)
+
+5. Reader View: Chat Panel
+- ChatPanel.svelte (Container for the chat feature)
+- ChatMessageList.svelte (Scrollable history of PDFChatResponse items)
+- ChatMessageBubble.svelte (Individual user/AI message using daisyUI chat bubbles)
+- ChatInputBox.svelte (Text input + Submit button for new queries)
+- ContextIndicator.svelte (Shows which sentences are currently selected as context)
+
+6. Reader View: Summaries
+- SummaryPanel.svelte
+- SummaryCard.svelte (Displays a single ChapterSummaryResponse)
+- GenerateSummaryButton.svelte (Triggers the async summary job)
+
+7. Reader View: Ideas & Explanations
+- IdeasPanel.svelte
+- IdeaAccordion.svelte (daisyUI collapse/accordion for IdeaWithSentences)
+- ArgumentList.svelte (List of extracted arguments)
+- ExplanationViewer.svelte (Shows explanations, allows editing/deleting)
+- GenerateExplanationButton.svelte
