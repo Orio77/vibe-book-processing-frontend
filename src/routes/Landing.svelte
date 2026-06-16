@@ -3,7 +3,7 @@
     import Register  from './Register.svelte';
     import { fly } from 'svelte/transition';
 
-    let { navigate } = $props();
+    import { navigate } from '../lib/navigation';
     let showLogin = $state(true);
 </script>
 
@@ -25,7 +25,7 @@
         <p class="text-lg text-base-content/70">
             Upload your PDFs, automatically extract chapters, chat with your books, and generate intelligent summaries—all with full offline support.
         </p>
-        <button class="btn btn-outline btn-primary mt-4" onclick={() => navigate('library')}>
+        <button class="btn btn-outline btn-primary mt-4" onclick={() => navigate('/library')}>
             Continue to Offline Version
         </button>
     </div>
@@ -53,11 +53,11 @@
             <div class="relative h-[320px] w-full overflow-hidden">
                 {#if showLogin}
                     <div class="absolute inset-0 w-full h-full" in:fly={{ x: -20, duration: 300, delay: 150 }} out:fly={{ x: 20, duration: 150 }}>
-                        <Login {navigate} isEmbedded={true} />
+                        <Login isEmbedded={true} />
                     </div>
                 {:else}
                     <div class="absolute inset-0 w-full h-full" in:fly={{ x: 20, duration: 300, delay: 150 }} out:fly={{ x: -20, duration: 150 }}>
-                        <Register {navigate} isEmbedded={true} />
+                        <Register isEmbedded={true} />
                     </div>
                 {/if}
             </div>

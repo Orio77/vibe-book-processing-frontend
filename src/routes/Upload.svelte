@@ -4,8 +4,7 @@
     import type { ChapterPageRange } from '../lib/types';
     import FileDropzone from '../components/upload/FileDropzone.svelte';
     import ChapterRanges from '../components/upload/ChapterRanges.svelte';
-
-    let { navigate } = $props();
+    import { navigate } from '../lib/navigation';
 
     let file = $state<File | null>(null);
     let ranges = $state<{ id: number; startPage: number; endPage: number }[]>([]);
@@ -20,7 +19,7 @@
             if (res.mode === 'queued') {
                 addPendingUploadJobId(res.jobId);
             }
-            navigate('library');
+            navigate('/library');
         } catch (e) {
             console.error("Upload failed", e);
             alert("Upload failed. Check console for details.");

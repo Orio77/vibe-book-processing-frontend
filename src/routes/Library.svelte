@@ -4,8 +4,7 @@
     import LoadingBookCard from '../components/library/LoadingBookCard.svelte';
     import { readPendingUploadJobIds, removePendingUploadJobId } from '../lib/pendingUploadJobs';
     import { fetchQueueJob } from '../lib/api/features/pdf';
-
-    let { navigate = () => {} } = $props();
+    import { navigate } from '../lib/navigation';
 
     // Mock data for the UI
     let books = $state([
@@ -51,7 +50,7 @@
             <h1 class="text-3xl font-bold text-base-content mb-1">Your Library</h1>
             <p class="text-base-content/60">Manage and read your uploaded books</p>
         </div>
-        <button class="btn btn-primary" onclick={() => navigate('upload')}>
+        <button class="btn btn-primary" onclick={() => navigate('/upload')}>
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
             Add New Book
         </button>
