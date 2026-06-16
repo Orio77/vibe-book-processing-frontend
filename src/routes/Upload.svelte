@@ -4,18 +4,59 @@
     import type { ChapterPageRange } from '../lib/types';
     import FileDropzone from '../components/upload/FileDropzone.svelte';
     import ChapterRanges from '../components/upload/ChapterRanges.svelte';
+    import type { RangeItem } from '../components/upload/ChapterRanges.svelte';
     import { navigate } from '../lib/navigation';
 
     let file = $state<File | null>(null);
-    let ranges = $state<{ id: number; startPage: number; endPage: number }[]>([]);
+    let ranges = $state<RangeItem[]>([]);
     let isUploading = $state(false);
 
     async function submitUpload() {
         if (!file) return;
         isUploading = true;
         try {
-            const mappedRanges: ChapterPageRange[] = ranges.map(r => ({ startPage: r.startPage, endPage: r.endPage }));
-            const res = await uploadPdf(file, mappedRanges);
+            const finalRanges: ChapterPageRange[] = [];
+            
+            // Sort ranges by start page
+            const sorted = [...ranges].sort((a, b) => a.startPage - b.startPage);
+            
+            if (sorted.length === 0) {
+                // If no chapters selected, one big chapter of the whole book
+                finalRanges.push({ startPage: 1, endPage: 999999 });
+            } else {
+                let currentPage = 1;
+                
+                for (let i = 0; i < sorted.length; i++) {
+                    const r = sorted[i];
+                    
+                    // Fill gap before this chapter if necessary
+                    if (r.startPage > currentPage) {
+                        finalRanges.push({ startPage: currentPage, endPage: r.startPage - 1 });
+                    }
+                    
+                    // Determine end page for this chapter
+                    let endP = 999999;
+                    if (r.hasCustomEnd) {
+                        endP = Math.max(r.startPage, r.endPage);
+                    } else {
+                        // Auto end page: until next chapter start - 1
+                        const next = sorted[i + 1];
+                        if (next && next.startPage > r.startPage) {
+                            endP = next.startPage - 1;
+                        }
+                    }
+                    
+                    finalRanges.push({ startPage: r.startPage, endPage: endP });
+                    currentPage = endP + 1;
+                }
+                
+                // If the last chapter had a custom end page, fill the rest of the book
+                if (currentPage <= 999999 && sorted[sorted.length - 1].hasCustomEnd) {
+                    finalRanges.push({ startPage: currentPage, endPage: 999999 });
+                }
+            }
+
+            const res = await uploadPdf(file, finalRanges);
             if (res.mode === 'queued') {
                 addPendingUploadJobId(res.jobId);
             }

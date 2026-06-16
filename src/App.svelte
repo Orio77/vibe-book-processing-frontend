@@ -7,6 +7,7 @@
     import Register from './routes/Register.svelte';
     import Library from './routes/Library.svelte';
     import Upload from './routes/Upload.svelte';
+    import Reader from './routes/Reader.svelte';
 
     export let url = "";
 </script>
@@ -14,7 +15,7 @@
 <Router {url}>
     <Layout>
         <!-- Temporary dev navigation controls -->
-        <div class="flex justify-center gap-2 mb-8 p-2 bg-base-200 rounded-lg">
+        <div class="absolute flex justify-center gap-2 mb-8 p-2 bg-base-200 rounded-lg">
             <span class="text-xs font-bold self-center uppercase mr-2 text-base-content/50">Dev Nav:</span>
             <button class="btn btn-xs btn-ghost" onclick={() => navigate('/')}>Landing</button>
             <button class="btn btn-xs btn-ghost" onclick={() => navigate('/login')}>Login</button>
@@ -28,5 +29,6 @@
         <Route path="/register"><Register /></Route>
         <Route path="/library"><Library /></Route>
         <Route path="/upload"><Upload /></Route>
+        <Route path="/read/:id" let:params><Reader id={params.id} /></Route>
     </Layout>
 </Router>

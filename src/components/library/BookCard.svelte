@@ -3,11 +3,13 @@
 
     interface Props {
         book?: {
+            id?: number | string;
             title: string;
             pages: number;
             date: string;
             color1?: string;
             color2?: string;
+            isOffline?: boolean;
         };
         onRead?: (e: MouseEvent) => void;
         onDelete?: (e: MouseEvent) => void;
@@ -21,20 +23,30 @@
 </script>
 
 <div 
-    class="card bg-base-100 border border-base-200 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full flex flex-col cursor-pointer group"
+    class="card bg-base-100 border border-base-200 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full flex flex-col cursor-pointer overflow-hidden group"
     role="button"
     tabindex="0"
     onclick={onRead}
     onkeydown={(e) => e.key === 'Enter' && onRead(e as any)}
 >
     <!-- Book Cover -->
-    <div class="relative bg-base-200/50 aspect-[3/4] flex items-center justify-center rounded-t-2xl overflow-hidden shadow-inner shrink-0">
+    <div class="relative bg-base-200/50 aspect-[3/4] flex items-center justify-center overflow-hidden shadow-inner shrink-0">
         <BookCover color1={book.color1} color2={book.color2} />
     </div>
     
     <!-- Book Info -->
-    <div class="p-4 border-t border-base-200 flex flex-col flex-grow">
-        <h3 class="font-bold text-base-content mb-1 truncate" title={book.title}>{book.title}</h3>
+    <div class="p-4 border-t border-base-200 flex flex-col flex-grow relative">
+        <h3 class="font-bold text-base-content mb-1 truncate pr-8" title={book.title}>{book.title}</h3>
+        
+        {#if book.isOffline}
+            <div class="absolute top-4 right-4 text-base-content/40 tooltip tooltip-left" data-tip="Offline on Device">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+            </div>
+        {:else}
+            <div class="absolute top-4 right-4 text-primary/60 tooltip tooltip-left" data-tip="Saved in Cloud">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" /></svg>
+            </div>
+        {/if}
         <p class="text-xs text-base-content/60 flex items-center gap-1.5 mb-4">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
             {book.pages} pages
