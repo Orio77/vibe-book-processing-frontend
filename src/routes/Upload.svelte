@@ -3,6 +3,7 @@
     import ChapterSlider from '../components/upload/ChapterSlider.svelte';
     import { uploadPdf } from '$lib/api/features/pdf';
     import { navigate } from '../lib/navigation';
+    import { authStore } from '$lib/stores/auth.svelte';
     import { addPendingUploadJobId } from '$lib/pendingUploadJobs';
     import { parseOfflineBundleZip, saveOfflineBundleToLibrary } from '$lib/offline';
     import ErrorAlert from '../components/common/ErrorAlert.svelte';
@@ -108,6 +109,16 @@
     <div class="mb-8 text-center">
         <h1 class="text-3xl font-bold text-base-content mb-2">Upload New Book</h1>
         <p class="text-base-content/60">Select a book and define its chapters for processing.</p>
+        
+        {#if !authStore.loggedIn}
+            <div class="alert alert-warning shadow-sm max-w-xl mx-auto mt-4 py-3 text-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                <div class="text-left">
+                    <span class="block font-bold">Not Logged In</span>
+                    <span class="block">You can still upload and read offline ZIP packs, but uploading and processing new PDFs requires an account.</span>
+                </div>
+            </div>
+        {/if}
     </div>
 
     <div class="max-w-xl mx-auto">

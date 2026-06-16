@@ -2,13 +2,24 @@
     import { stompStore } from '$lib/stores/stomp.svelte';
     import { fly } from 'svelte/transition';
     import { flip } from 'svelte/animate';
+    import type { Chapter } from '$lib/types';
 
-    function getJobTitle(type: string) {
-        switch (type) {
+    let { chapters = [] }: { chapters?: Chapter[] } = $props();
+
+    function getJobTitle(job: any) {
+        let suffix = '';
+        if (job.chapterId && chapters.length > 0) {
+            const c = chapters.find((ch) => ch.id === job.chapterId);
+            if (c) {
+                suffix = ` (${c.title || 'Chapter'})`;
+            }
+        }
+        
+        switch (job.type) {
             case 'PDF_UPLOAD': return 'Processing Document';
-            case 'CHAPTER_SUMMARY': return 'Generating Summary';
-            case 'IDEA_EXTRACTION': return 'Extracting Ideas';
-            case 'IDEA_EXPLANATION': return 'Generating Explanation';
+            case 'CHAPTER_SUMMARY': return 'Generating Summary' + suffix;
+            case 'IDEA_EXTRACTION': return 'Extracting Ideas' + suffix;
+            case 'IDEA_EXPLANATION': return 'Generating Explanation' + suffix;
             case 'CHAT': return 'Thinking';
             default: return 'Processing';
         }
@@ -40,7 +51,7 @@
                             </svg>
                         {/if}
                         <div class="flex flex-col">
-                            <span class="font-medium">{getJobTitle(job.type)}</span>
+                            <span class="font-medium">{getJobTitle(job)}</span>
                             <span class="text-xs text-base-content/60">
                                 {job.status === 'QUEUED' ? 'Waiting in queue...' : 
                                  job.status === 'IN_PROGRESS' ? 'Running...' : 
