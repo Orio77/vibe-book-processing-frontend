@@ -1,59 +1,76 @@
 <script lang="ts">
-    import { uploadPdf } from '../lib/api/features/pdf';
-    import { addPendingUploadJobId } from '../lib/pendingUploadJobs';
-    import type { ChapterPageRange } from '../lib/types';
     import FileDropzone from '../components/upload/FileDropzone.svelte';
-    import ChapterRanges from '../components/upload/ChapterRanges.svelte';
-    import type { RangeItem } from '../components/upload/ChapterRanges.svelte';
+    import ChapterSlider from '../components/upload/ChapterSlider.svelte';
+    import { uploadPdf } from '$lib/api/features/pdf';
     import { navigate } from '../lib/navigation';
+    import { addPendingUploadJobId } from '$lib/pendingUploadJobs';
+    import * as pdfjsLib from 'pdfjs-dist';
+
+    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+        'pdfjs-dist/build/pdf.worker.mjs',
+        import.meta.url,
+    ).toString();
 
     let file = $state<File | null>(null);
-    let ranges = $state<RangeItem[]>([]);
+    let dividers = $state<number[]>([]);
     let isUploading = $state(false);
+    let pdfPageCount = $state<number | null>(null);
+    let fileError = $state<string | null>(null);
+
+    $effect(() => {
+        if (file) {
+            dividers = [];
+            validateAndLoadPdf(file);
+        } else {
+            pdfPageCount = null;
+            fileError = null;
+            dividers = [];
+        }
+    });
+
+    async function validateAndLoadPdf(selected: File) {
+        pdfPageCount = null;
+        dividers = [];
+        fileError = null;
+        
+        if (selected.type !== 'application/pdf') {
+            fileError = 'Please upload a valid PDF file.';
+            return;
+        }
+        if (selected.size > 50 * 1024 * 1024) {
+            fileError = 'File is too large. Maximum size is 50MB.';
+            return;
+        }
+        
+        try {
+            const arrayBuffer = await selected.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            pdfPageCount = pdf.numPages;
+        } catch (e) {
+            console.error("Failed to parse PDF", e);
+            fileError = "Failed to parse PDF file.";
+            pdfPageCount = null;
+        }
+    }
 
     async function submitUpload() {
-        if (!file) return;
+        if (!file || !pdfPageCount) return;
         isUploading = true;
         try {
-            const finalRanges: ChapterPageRange[] = [];
+            const finalRanges: { startPage: number, endPage: number }[] = [];
             
-            // Sort ranges by start page
-            const sorted = [...ranges].sort((a, b) => a.startPage - b.startPage);
+            // Defensively sanitize dividers to ensure no API crashes
+            const validDividers = [...new Set(dividers)]
+                .filter(d => d > 1 && d <= pdfPageCount)
+                .sort((a, b) => a - b);
+                
+            const boundaries = [1, ...validDividers, pdfPageCount + 1];
             
-            if (sorted.length === 0) {
-                // If no chapters selected, one big chapter of the whole book
-                finalRanges.push({ startPage: 1, endPage: 999999 });
-            } else {
-                let currentPage = 1;
-                
-                for (let i = 0; i < sorted.length; i++) {
-                    const r = sorted[i];
-                    
-                    // Fill gap before this chapter if necessary
-                    if (r.startPage > currentPage) {
-                        finalRanges.push({ startPage: currentPage, endPage: r.startPage - 1 });
-                    }
-                    
-                    // Determine end page for this chapter
-                    let endP = 999999;
-                    if (r.hasCustomEnd) {
-                        endP = Math.max(r.startPage, r.endPage);
-                    } else {
-                        // Auto end page: until next chapter start - 1
-                        const next = sorted[i + 1];
-                        if (next && next.startPage > r.startPage) {
-                            endP = next.startPage - 1;
-                        }
-                    }
-                    
-                    finalRanges.push({ startPage: r.startPage, endPage: endP });
-                    currentPage = endP + 1;
-                }
-                
-                // If the last chapter had a custom end page, fill the rest of the book
-                if (currentPage <= 999999 && sorted[sorted.length - 1].hasCustomEnd) {
-                    finalRanges.push({ startPage: currentPage, endPage: 999999 });
-                }
+            for (let i = 0; i < boundaries.length - 1; i++) {
+                finalRanges.push({
+                    startPage: boundaries[i],
+                    endPage: boundaries[i + 1] - 1
+                });
             }
 
             const res = await uploadPdf(file, finalRanges);
@@ -70,27 +87,42 @@
 </script>
 
 <div class="max-w-4xl mx-auto py-8">
-    <div class="mb-8">
+    <div class="mb-8 text-center">
         <h1 class="text-3xl font-bold text-base-content mb-2">Upload New PDF</h1>
         <p class="text-base-content/60">Select a book and define its chapters for processing.</p>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <!-- Left: File Dropzone -->
-        <div class="flex flex-col gap-4">
-            <h2 class="text-xl font-semibold">1. Select PDF</h2>
-            <FileDropzone bind:file />
+    {#if fileError}
+        <div class="alert alert-error mb-6 max-w-xl mx-auto shadow-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <span>{fileError}</span>
+        </div>
+    {/if}
+
+    <div class="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <!-- File Dropzone (Top) -->
+        <div class="max-w-2xl mx-auto w-full">
+            <FileDropzone bind:file hasError={!!fileError} />
         </div>
 
-        <!-- Right: Chapter Ranges & Submit -->
-        <div class="flex flex-col gap-4">
-            <h2 class="text-xl font-semibold">2. Define Chapters (Optional)</h2>
-            <ChapterRanges 
-                bind:ranges
-                {file}
-                {isUploading}
-                onSubmit={submitUpload}
-            />
-        </div>
+        {#if file && !fileError && pdfPageCount !== null}
+            <!-- Chapter Slider (Below) -->
+            <div class="w-full flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
+                <ChapterSlider bind:dividers totalPages={pdfPageCount} />
+                
+                <button 
+                    class="btn btn-primary w-full max-w-sm mx-auto mt-4" 
+                    disabled={!file || isUploading}
+                    onclick={submitUpload}
+                >
+                    {#if isUploading}
+                        <span class="loading loading-spinner loading-sm"></span>
+                        Uploading...
+                    {:else}
+                        Start Processing
+                    {/if}
+                </button>
+            </div>
+        {/if}
     </div>
 </div>

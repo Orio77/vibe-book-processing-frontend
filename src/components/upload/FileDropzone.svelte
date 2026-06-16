@@ -1,7 +1,7 @@
 <script lang="ts">
     import { fly } from "svelte/transition";
 
-    let { file = $bindable(null as File | null) } = $props();
+    let { file = $bindable(null as File | null), hasError = false } = $props();
 
     let isDragging = $state(false);
 
@@ -26,7 +26,7 @@
            {isDragging
         ? 'border-primary bg-primary/10 scale-[1.02]'
         : 'border-base-300 bg-base-200/50 hover:bg-base-200'}
-           {file ? 'border-success bg-success/5' : ''}"
+           {file ? (hasError ? 'border-error bg-error/5' : 'border-success bg-success/5') : ''}"
     ondragover={(e) => {
         e.preventDefault();
         isDragging = true;
@@ -53,21 +53,37 @@
             class="flex flex-col items-center gap-3"
         >
             <div
-                class="w-16 h-16 rounded-full bg-success/20 flex items-center justify-center text-success"
+                class="w-16 h-16 rounded-full flex items-center justify-center {hasError ? 'bg-error/20 text-error' : 'bg-success/20 text-success'}"
             >
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    class="h-8 w-8"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    ><path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M5 13l4 4L19 7"
-                    /></svg
-                >
+                {#if hasError}
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-8 w-8"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        ><path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12"
+                        /></svg
+                    >
+                {:else}
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-8 w-8"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        ><path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M5 13l4 4L19 7"
+                        /></svg
+                    >
+                {/if}
             </div>
             <div>
                 <p class="font-medium text-lg truncate max-w-xs">{file.name}</p>

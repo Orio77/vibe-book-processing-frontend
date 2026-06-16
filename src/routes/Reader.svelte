@@ -13,8 +13,13 @@
     import SelectionToolbar from "../components/reader/SelectionToolbar.svelte";
     import { stompStore } from "$lib/stores/stomp.svelte";
 
+    import { selectionStore } from "$lib/stores/selection.svelte";
+
     let { id }: { id: string | number } = $props();
 
+    let isOffline = $derived(typeof id === 'string' && id.startsWith('offline-'));
+    let offlineId = $derived(typeof id === 'string' ? id.replace('offline-', '') : '');
+    
     let parsedId = $derived(
         typeof id === "string"
             ? Number(id.replace(/^(online|offline)-/, ""))
@@ -27,15 +32,29 @@
     let sentences = $state<Sentence[]>([]);
     let isLoading = $state(true);
     let isChapterLoading = $state(false);
+    let offlineRecord = $state<any>(null);
 
     async function loadData() {
-        if (!parsedId || isNaN(parsedId)) return;
+        if (!isOffline && (!parsedId || isNaN(parsedId))) return;
         isLoading = true;
         try {
-            pdf = await fetchPdf(parsedId);
-            chapters = await fetchChapters(parsedId);
-            if (chapters.length > 0) {
-                await loadChapter(chapters[0]);
+            if (isOffline) {
+                const { getOfflineBookRecord } = await import('$lib/offline/libraryDb');
+                const record = await getOfflineBookRecord(offlineId);
+                if (record) {
+                    offlineRecord = record;
+                    pdf = record.book.pdf;
+                    chapters = record.book.chapters;
+                    if (chapters.length > 0) {
+                        await loadChapter(chapters[0]);
+                    }
+                }
+            } else {
+                pdf = await fetchPdf(parsedId);
+                chapters = await fetchChapters(parsedId);
+                if (chapters.length > 0) {
+                    await loadChapter(chapters[0]);
+                }
             }
         } catch (e) {
             console.error(e);
@@ -48,10 +67,19 @@
         currentChapter = chapter;
         isChapterLoading = true;
         try {
-            const ranges = await fetchSentencesInRanges(parsedId, [
-                { startPage: chapter.startPage, endPage: chapter.endPage },
-            ]);
-            sentences = ranges[0] || [];
+            if (isOffline && offlineRecord) {
+                const sentencesList = [];
+                for (let p = chapter.startPage; p <= chapter.endPage; p++) {
+                    const pageSentences = offlineRecord.book.sentencesByPage[p] || [];
+                    sentencesList.push(...pageSentences);
+                }
+                sentences = sentencesList;
+            } else {
+                const ranges = await fetchSentencesInRanges(parsedId, [
+                    { startPage: chapter.startPage, endPage: chapter.endPage },
+                ]);
+                sentences = ranges[0] || [];
+            }
         } catch (e) {
             console.error(e);
         } finally {
@@ -65,6 +93,8 @@
 
         return () => {
             stompStore.disconnect();
+            selectionStore.clearSelection();
+            selectionStore.setSelectionMode(false);
         };
     });
 </script>
@@ -84,10 +114,11 @@
             {sentences}
             {isLoading}
             {isChapterLoading}
+            {loadChapter}
         />
 
         <SelectionToolbar />
     </div>
 
-    <ReaderSidebar {chapters} {currentChapter} {isLoading} {loadChapter} {sentences} />
+    <ReaderSidebar {pdf} {chapters} {currentChapter} {isLoading} {loadChapter} {sentences} />
 </div>

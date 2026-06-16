@@ -24,9 +24,6 @@
         <p class="text-lg text-base-content/70">
             Upload your PDFs, automatically extract chapters, chat with your books, and generate intelligent summaries—all with full offline support.
         </p>
-        <button class="btn btn-outline btn-primary mt-4" onclick={() => navigate('/library')}>
-            Continue to Offline Version
-        </button>
     </div>
 
     <!-- Right: Auth Form or Logged-in state -->

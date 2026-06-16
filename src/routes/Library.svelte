@@ -2,13 +2,98 @@
     import BookCard from '../components/library/BookCard.svelte';
     import LoadingBookCard from '../components/library/LoadingBookCard.svelte';
     import { navigate } from '../lib/navigation';
-    import { createLibraryStore } from '$lib/stores/library.svelte';
+    import { createLibraryStore, type UnifiedBook } from '$lib/stores/library.svelte';
+    import ExportOfflinePackModal, { type OfflineExportConfirmOptions, type OfflineLibraryUpdateTarget } from '../components/library/ExportOfflinePackModal.svelte';
+    import { 
+        listOfflineBookRecordsForSourcePdf, 
+        exportOfflineRecordToZipBlob, 
+        buildOfflineBundlePayload, 
+        offlineBundlePayloadToZipBlob, 
+        saveOfflineBundleToLibrary, 
+        mergeOfflineRecordWithNewPayload, 
+        getOfflineBookRecord, 
+        putOfflineBookRecord 
+    } from '$lib/offline';
 
     const library = createLibraryStore();
+
+    let modalOpen = $state(false);
+    let modalBusy = $state(false);
+    let modalUpdateTargets = $state<OfflineLibraryUpdateTarget[]>([]);
+    let selectedBookForExport = $state<UnifiedBook | null>(null);
+
+    async function handleDownloadClick(book: UnifiedBook) {
+        if (book.id.toString().startsWith('offline-')) {
+            const exportId = book.id.toString().replace('offline-', '');
+            const record = await getOfflineBookRecord(exportId);
+            if (!record) {
+                alert('Offline record not found');
+                return;
+            }
+            const blob = exportOfflineRecordToZipBlob(record);
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const safeTitle = (book.title || 'book').replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-');
+            a.download = `${safeTitle}-offline-pack.zip`;
+            a.click();
+            URL.revokeObjectURL(url);
+            return;
+        }
+
+        selectedBookForExport = book;
+        const numId = Number(book.id.toString().replace('online-', ''));
+        const records = await listOfflineBookRecordsForSourcePdf(numId);
+        modalUpdateTargets = records.map(r => ({
+            exportId: r.exportId,
+            label: r.manifest.sourcePdfTitle ?? book.title
+        }));
+        modalOpen = true;
+    }
+
+    async function handleModalConfirm(options: OfflineExportConfirmOptions) {
+        if (!selectedBookForExport) return;
+        modalBusy = true;
+        try {
+            const numId = Number(selectedBookForExport.id.toString().replace('online-', ''));
+            const payload = await buildOfflineBundlePayload(numId.toString());
+
+            if (options.downloadZip) {
+                const blob = offlineBundlePayloadToZipBlob(payload);
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const safeTitle = (selectedBookForExport.title || 'book').replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-');
+                a.download = `${safeTitle}-offline-pack.zip`;
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+
+            if (options.saveToLibrary) {
+                if (options.updateLibraryExportId) {
+                    const existing = await getOfflineBookRecord(options.updateLibraryExportId);
+                    if (existing) {
+                        const merged = mergeOfflineRecordWithNewPayload(existing, payload);
+                        await putOfflineBookRecord(merged);
+                    } else {
+                        throw new Error('Target record not found');
+                    }
+                } else {
+                    await saveOfflineBundleToLibrary(payload.manifest, payload.book, 1);
+                }
+                await library.fetchLibraryData();
+            }
+            modalOpen = false;
+        } catch (e) {
+            console.error(e);
+            alert('Failed to export offline pack: ' + String(e));
+        } finally {
+            modalBusy = false;
+        }
+    }
 </script>
 
 <div class="py-4">
-    <!-- Header -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
         <div>
             <h1 class="text-3xl font-bold text-base-content mb-1">Your Library</h1>
@@ -20,7 +105,6 @@
         </button>
     </div>
 
-    <!-- Grid -->
     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
         {#if library.isLoading}
             <LoadingBookCard />
@@ -35,7 +119,12 @@
             </div>
         {:else}
             {#each library.books as book (book.id)}
-                <BookCard {book} onRead={() => navigate('/read/' + book.id)} />
+                <BookCard 
+                    {book} 
+                    onRead={() => navigate('/read/' + book.id)} 
+                    onDelete={() => library.deleteLibraryBook(book.id)}
+                    onDownload={() => handleDownloadClick(book)}
+                />
             {/each}
         {/if}
         
@@ -44,3 +133,10 @@
         {/each}
     </div>
 </div>
+
+<ExportOfflinePackModal
+    bind:isOpen={modalOpen}
+    busy={modalBusy}
+    libraryUpdateTargets={modalUpdateTargets}
+    onConfirm={handleModalConfirm}
+/>

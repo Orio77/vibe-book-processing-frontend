@@ -2,6 +2,7 @@
     import type { Chapter } from '$lib/types';
     import { IdeasState } from './ideas.svelte';
     import IdeaItem from './IdeaItem.svelte';
+    import { fade } from 'svelte/transition';
 
     let { chapter }: { chapter: Chapter } = $props();
 
@@ -12,18 +13,15 @@
 <div class="flex flex-col h-full overflow-y-auto p-4 space-y-6">
     <div class="flex justify-between items-center">
         <h2 class="text-xl font-bold">Key Ideas</h2>
-        <button 
-            class="btn btn-primary btn-sm"
-            onclick={() => state.handleExtract()}
-            disabled={state.isExtracting}
-        >
-            {#if state.isExtracting}
-                <span class="loading loading-spinner loading-xs"></span>
-                Extracting...
-            {:else}
+        {#if !state.isExtracting && state.ideas.length === 0}
+            <button 
+                class="btn btn-primary btn-sm"
+                onclick={() => state.handleExtract()}
+                transition:fade={{ duration: 200 }}
+            >
                 Extract
-            {/if}
-        </button>
+            </button>
+        {/if}
     </div>
 
     {#if state.error}

@@ -10,6 +10,10 @@
         { id: "cyberpunk", label: "Cyberpunk" },
         { id: "valentine", label: "Valentine" },
         { id: "aqua", label: "Aqua" },
+        { id: "synthwave", label: "Synthwave" },
+        { id: "forest", label: "Forest" },
+        { id: "lofi", label: "Lofi" },
+        { id: "nord", label: "Nord" },
     ];
 </script>
 
@@ -49,7 +53,6 @@
                         class="w-full justify-start {settingsStore.theme === t.id ? 'active bg-primary text-primary-content' : ''}"
                         onclick={() => {
                             settingsStore.setTheme(t.id);
-                            (document.activeElement as HTMLElement)?.blur();
                         }}
                     >
                         {t.label}

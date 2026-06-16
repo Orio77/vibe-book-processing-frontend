@@ -3,6 +3,9 @@
     import { authStore } from "$lib/stores/auth.svelte";
     import ThemeSelector from "./ThemeSelector.svelte";
     import SettingsDropdown from "./SettingsDropdown.svelte";
+    import { useLocation } from "svelte-routing";
+
+    const location = useLocation();
 </script>
 
 <div class="navbar bg-base-100/95 backdrop-blur border-b border-base-200 px-4 md:px-8 sticky top-0 z-50">
@@ -33,7 +36,7 @@
         <!-- Links -->
         <div class="hidden md:flex gap-2">
             <button
-                class="btn btn-sm btn-ghost text-primary"
+                class="btn btn-sm {$location.pathname === '/library' ? 'btn-primary' : 'btn-ghost text-base-content/70 hover:text-primary'}"
                 onclick={() => navigate("/library")}
             >
                 <svg
@@ -52,7 +55,7 @@
                 Library
             </button>
             <button
-                class="btn btn-sm btn-ghost text-base-content/70"
+                class="btn btn-sm {$location.pathname === '/upload' ? 'btn-primary' : 'btn-ghost text-base-content/70 hover:text-primary'}"
                 onclick={() => navigate("/upload")}
             >
                 <svg
@@ -68,23 +71,7 @@
                         d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
                     /></svg
                 >
-                Upload PDF
-            </button>
-            <button class="btn btn-sm btn-ghost text-base-content/70">
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    class="h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    ><path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
-                    /></svg
-                >
-                Offline library
+                Upload Book
             </button>
         </div>
     </div>

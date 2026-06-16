@@ -25,8 +25,9 @@ export class LibraryStore {
         for (let i = 0; i < str.length; i++) {
             hash = str.charCodeAt(i) + ((hash << 5) - hash);
         }
-        const hue1 = Math.abs(hash % 360);
-        const hue2 = Math.abs((hash * 2) % 360);
+        // Multiply by primes to heavily distribute small differences in hash across the color wheel
+        const hue1 = Math.abs((hash * 137) % 360);
+        const hue2 = Math.abs((hash * 257) % 360);
         return {
             color1: `hsl(${hue1}, 100%, 72%)`,
             color2: `hsl(${hue2}, 100%, 50%)`
@@ -45,7 +46,7 @@ export class LibraryStore {
 
             if (onlinePdfsResult.status === 'fulfilled') {
                 for (const pdf of onlinePdfsResult.value) {
-                    const colors = this.getColors(`online-${pdf.id}`);
+                    const colors = this.getColors(pdf.title);
                     newBooks.push({
                         id: `online-${pdf.id}`,
                         title: pdf.title,
@@ -60,7 +61,7 @@ export class LibraryStore {
 
             if (offlineBooksResult.status === 'fulfilled') {
                 for (const record of offlineBooksResult.value) {
-                    const colors = this.getColors(`offline-${record.exportId}`);
+                    const colors = this.getColors(record.book.pdf.title);
                     newBooks.push({
                         id: `offline-${record.exportId}`,
                         title: record.book.pdf.title,
@@ -105,6 +106,25 @@ export class LibraryStore {
         }, 3000);
     }
     
+    deleteLibraryBook = async (id: string | number) => {
+        const idStr = id.toString();
+        try {
+            if (idStr.startsWith('online-')) {
+                const numId = Number(idStr.replace('online-', ''));
+                const { deletePdf } = await import('$lib/api/features/pdf');
+                await deletePdf(numId);
+            } else if (idStr.startsWith('offline-')) {
+                const exportId = idStr.replace('offline-', '');
+                const { deleteOfflineBookRecord } = await import('$lib/offline/libraryDb');
+                await deleteOfflineBookRecord(exportId);
+            }
+            await this.fetchLibraryData();
+        } catch (e) {
+            console.error("Failed to delete book", e);
+            throw e;
+        }
+    }
+
     cleanup = () => {
         if (this.interval) clearInterval(this.interval);
     }
