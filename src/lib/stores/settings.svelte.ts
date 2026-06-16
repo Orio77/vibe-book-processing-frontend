@@ -2,8 +2,20 @@ const SETTINGS_STORAGE_KEY = 'bookProcessing.settings';
 
 export type TextWidth = 'narrow' | 'medium' | 'wide';
 export type ScrollMode = 'vertical' | 'horizontal';
+export type FontFamily = 'default' | 'literata' | 'verdana' | 'helvetica' | 'opendyslexic';
+
+export function getFontFamilyString(font: FontFamily): string {
+    switch (font) {
+        case 'literata': return "'Literata', serif";
+        case 'verdana': return "'Verdana', sans-serif";
+        case 'helvetica': return "'Helvetica', 'Arial', sans-serif";
+        case 'opendyslexic': return "'OpenDyslexic', sans-serif";
+        default: return "inherit";
+    }
+}
 
 export interface SettingsData {
+    fontFamily: FontFamily;
     fontSize: number;
     lineSpacing: number;
     textWidth: TextWidth;
@@ -13,6 +25,7 @@ export interface SettingsData {
 }
 
 const DEFAULTS: SettingsData = {
+    fontFamily: 'default',
     fontSize: 20,
     lineSpacing: 1.8,
     textWidth: 'medium',
@@ -37,6 +50,7 @@ function saveToStorage(data: SettingsData): void {
 }
 
 class SettingsStore {
+    fontFamily = $state<FontFamily>(DEFAULTS.fontFamily);
     fontSize = $state(DEFAULTS.fontSize);
     lineSpacing = $state(DEFAULTS.lineSpacing);
     textWidth = $state<TextWidth>(DEFAULTS.textWidth);
@@ -46,6 +60,7 @@ class SettingsStore {
 
     constructor() {
         const saved = loadFromStorage();
+        this.fontFamily = saved.fontFamily;
         this.fontSize = saved.fontSize;
         this.lineSpacing = saved.lineSpacing;
         this.textWidth = saved.textWidth;
@@ -59,6 +74,7 @@ class SettingsStore {
 
     private persist() {
         saveToStorage({
+            fontFamily: this.fontFamily,
             fontSize: this.fontSize,
             lineSpacing: this.lineSpacing,
             textWidth: this.textWidth,
@@ -70,6 +86,11 @@ class SettingsStore {
 
     private applyTheme() {
         document.documentElement.setAttribute('data-theme', this.theme);
+    }
+
+    setFontFamily(value: FontFamily) {
+        this.fontFamily = value;
+        this.persist();
     }
 
     setFontSize(value: number) {
@@ -104,6 +125,7 @@ class SettingsStore {
     }
 
     resetToDefaults() {
+        this.fontFamily = DEFAULTS.fontFamily;
         this.fontSize = DEFAULTS.fontSize;
         this.lineSpacing = DEFAULTS.lineSpacing;
         this.textWidth = DEFAULTS.textWidth;

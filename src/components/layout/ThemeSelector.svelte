@@ -1,5 +1,6 @@
 <script lang="ts">
     import { settingsStore } from "$lib/stores/settings.svelte";
+    import Dropdown from "./Dropdown.svelte";
 
     const themes = [
         { id: "default", label: "Default" },
@@ -12,8 +13,8 @@
     ];
 </script>
 
-<div class="dropdown dropdown-end">
-    <div tabindex="0" role="button" class="btn btn-ghost btn-sm gap-1">
+<Dropdown contentClass="w-52 p-2">
+    {#snippet trigger()}
         <svg
             xmlns="http://www.w3.org/2000/svg"
             class="h-4 w-4"
@@ -36,25 +37,25 @@
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 2048 2048"
         >
-            <path d="M1799 349l242 241-1017 1017L7 590l242-241 775 775 775-775z"
-            ></path>
+            <path d="M1799 349l242 241-1017 1017L7 590l242-241 775 775 775-775z"></path>
         </svg>
-    </div>
-    <ul
-        class="dropdown-content bg-base-200 rounded-box z-[1] w-52 p-2 shadow-2xl"
-    >
-        {#each themes as t (t.id)}
-            <li>
-                <button
-                    class="w-full btn btn-sm btn-block justify-start {settingsStore.theme ===
-                    t.id
-                        ? 'btn-primary'
-                        : 'btn-ghost'}"
-                    onclick={() => settingsStore.setTheme(t.id)}
-                >
-                    {t.label}
-                </button>
-            </li>
-        {/each}
-    </ul>
-</div>
+    {/snippet}
+
+    {#snippet content()}
+        <ul class="menu menu-sm w-full p-0">
+            {#each themes as t (t.id)}
+                <li>
+                    <button
+                        class="w-full justify-start {settingsStore.theme === t.id ? 'active bg-primary text-primary-content' : ''}"
+                        onclick={() => {
+                            settingsStore.setTheme(t.id);
+                            (document.activeElement as HTMLElement)?.blur();
+                        }}
+                    >
+                        {t.label}
+                    </button>
+                </li>
+            {/each}
+        </ul>
+    {/snippet}
+</Dropdown>

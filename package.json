@@ -15,11 +15,12 @@
     "@sveltejs/vite-plugin-svelte": "^7.1.2",
     "@tsconfig/svelte": "^5.0.8",
     "@types/node": "^24.12.3",
+    "@types/sockjs-client": "^1.5.4",
     "eslint": "^10.5.0",
     "eslint-plugin-svelte": "^3.19.0",
     "globals": "^17.6.0",
     "svelte": "^5.56.3",
-    "svelte-check": "^4.4.8",
+    "svelte-check": "^4.6.0",
     "svelte-routing": "^2.13.0",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.61.1",
@@ -27,12 +28,14 @@
     "vitest": "^4.1.9"
   },
   "dependencies": {
+    "@stomp/stompjs": "^7.3.0",
     "@tailwindcss/vite": "^4.3.1",
     "axios": "^1.18.0",
     "daisyui": "^5.5.23",
     "fflate": "^0.8.3",
     "idb": "^8.0.3",
     "pdfjs-dist": "^6.0.227",
+    "sockjs-client": "^1.6.1",
     "tailwindcss": "^4.3.1"
   }
 }
