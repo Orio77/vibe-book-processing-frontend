@@ -42,17 +42,6 @@
     {/snippet}
 
     {#snippet content()}
-        <!-- Header -->
-        <div class="flex items-center justify-between">
-            <h3 class="text-lg font-bold text-base-content">Reader View Settings</h3>
-            <button class="btn btn-ghost btn-sm btn-circle" onclick={closeDropdown}>
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-            </button>
-        </div>
-
-        <hr class="border-base-200" />
 
         <!-- Font family -->
         <div class="space-y-2">
@@ -116,6 +105,79 @@
                         {opt.label}
                     </button>
                 {/each}
+            </div>
+        </div>
+
+        <hr class="border-base-200" />
+
+        <!-- LLM Settings Collapse -->
+        <div class="collapse collapse-arrow border border-base-300 bg-base-100">
+            <input type="checkbox" /> 
+            <div class="collapse-title text-sm font-bold text-base-content">
+                Advanced Offline LLM
+            </div>
+            <div class="collapse-content space-y-4">
+                <!-- LLM API Key Override Toggle -->
+                <div class="space-y-2 pt-2">
+                    <label class="label cursor-pointer p-0">
+                        <span class="text-sm font-semibold text-base-content">Override with offline API Key</span>
+                        <input
+                            type="checkbox"
+                            class="toggle toggle-primary toggle-sm"
+                            checked={settingsStore.forceOfflineLlm}
+                            onchange={(e) => settingsStore.setForceOfflineLlm(e.currentTarget.checked)}
+                        />
+                    </label>
+                    <p class="text-xs text-base-content/60">
+                        Normally in online mode it uses the server. Enable this to switch to the API key below.
+                    </p>
+                </div>
+
+                <!-- LLM API Key -->
+                <div class="space-y-2">
+                    <label class="text-sm font-semibold text-base-content" for="settings-llm-api-key">
+                        LLM API Key
+                    </label>
+                    <input
+                        id="settings-llm-api-key"
+                        type="password"
+                        autocomplete="off"
+                        placeholder="sk-..."
+                        value={settingsStore.llmApiKey}
+                        oninput={(e) => settingsStore.setLlmApiKey(e.currentTarget.value)}
+                        class="input input-sm input-bordered w-full"
+                    />
+                </div>
+
+                <!-- LLM Base URL -->
+                <div class="space-y-2">
+                    <label class="text-sm font-semibold text-base-content" for="settings-llm-base-url">
+                        LLM Base URL
+                    </label>
+                    <input
+                        id="settings-llm-base-url"
+                        type="url"
+                        placeholder="https://generativelanguage.googleapis.com/v1beta/openai/"
+                        value={settingsStore.llmBaseUrl}
+                        oninput={(e) => settingsStore.setLlmBaseUrl(e.currentTarget.value)}
+                        class="input input-sm input-bordered w-full"
+                    />
+                </div>
+
+                <!-- LLM Model -->
+                <div class="space-y-2">
+                    <label class="text-sm font-semibold text-base-content" for="settings-llm-model">
+                        LLM Model
+                    </label>
+                    <input
+                        id="settings-llm-model"
+                        type="text"
+                        placeholder="gpt-4o-mini"
+                        value={settingsStore.llmModel}
+                        oninput={(e) => settingsStore.setLlmModel(e.currentTarget.value)}
+                        class="input input-sm input-bordered w-full"
+                    />
+                </div>
             </div>
         </div>
 

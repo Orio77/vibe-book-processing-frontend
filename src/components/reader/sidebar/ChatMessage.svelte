@@ -1,22 +1,29 @@
 <script lang="ts">
     import type { PDFChatResponse } from '$lib/types';
+    import { highlightsStore } from '$lib/stores/highlights.svelte';
 
     let { response }: { response: PDFChatResponse } = $props();
 </script>
 
-<div class="chat chat-end mb-2">
-    <div class="chat-bubble chat-bubble-primary text-sm shadow-md">
-        {response.query || 'Can you explain the selected text?'}
-    </div>
-</div>
-
-<div class="chat chat-start">
-    <div class="chat-bubble bg-base-200 text-base-content text-sm leading-relaxed shadow-sm">
-        {response.chatResponse}
-    </div>
-    {#if response.contextSentencesIds?.length > 0}
-        <div class="chat-footer opacity-50 text-xs mt-1">
-            Based on {response.contextSentencesIds.length} sentence(s)
+<div class="card bg-base-100 border border-base-300 shadow-sm mb-4 text-left">
+    <div class="card-body p-4 gap-2">
+        <h3 class="card-title text-sm font-bold text-base-content/80">
+            {#if response.query}
+                [{response.query}]
+            {:else}
+                Explanation
+            {/if}
+        </h3>
+        <div class="text-sm leading-relaxed text-base-content mt-1 whitespace-pre-wrap">
+            {response.chatResponse}
         </div>
-    {/if}
+        {#if response.contextSentencesIds?.length > 0}
+            <button 
+                class="text-xs font-semibold text-primary hover:underline mt-2 text-left"
+                onclick={() => highlightsStore.scrollToSentence(response.contextSentencesIds[0])}
+            >
+                Based on {response.contextSentencesIds.length} sentence(s)
+            </button>
+        {/if}
+    </div>
 </div>

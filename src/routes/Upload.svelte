@@ -73,17 +73,18 @@
     }
 
     async function submitUpload() {
-        if (!file || !pdfPageCount) return;
+        const pageCount = pdfPageCount;
+        if (!file || !pageCount) return;
         isUploading = true;
         try {
             const finalRanges: { startPage: number, endPage: number }[] = [];
             
             // Defensively sanitize dividers to ensure no API crashes
             const validDividers = [...new Set(dividers)]
-                .filter(d => d > 1 && d <= pdfPageCount)
+                .filter(d => d > 1 && d <= pageCount)
                 .sort((a, b) => a - b);
                 
-            const boundaries = [1, ...validDividers, pdfPageCount + 1];
+            const boundaries = [1, ...validDividers, pageCount + 1];
             
             for (let i = 0; i < boundaries.length - 1; i++) {
                 finalRanges.push({

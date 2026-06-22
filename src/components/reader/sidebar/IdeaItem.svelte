@@ -2,6 +2,7 @@
     import { slide } from 'svelte/transition';
     import type { IdeaWithSentences } from '$lib/types';
     import type { IdeasState } from './ideas.svelte';
+    import { highlightsStore } from '$lib/stores/highlights.svelte';
 
     let { idea, state }: { idea: IdeaWithSentences; state: IdeasState } = $props();
 
@@ -11,7 +12,7 @@
 
 </script>
 
-<div class="bg-base-100 rounded-xl shadow-sm border border-base-200 overflow-hidden">
+<div data-idea-id={idea.idea.ideaId} class="bg-base-100 rounded-xl shadow-sm border border-base-200 overflow-hidden">
     <button 
         class="w-full text-left p-4 hover:bg-base-200 transition-colors flex justify-between items-center font-semibold"
         onclick={() => state.toggleExpand(idea.idea.ideaId)}
@@ -26,12 +27,12 @@
         <div class="p-4 border-t border-base-200 bg-base-50" transition:slide={{ duration: 200 }}>
             {#if idea.sentences.length > 0}
                 <div class="mb-4">
-                    <h4 class="text-xs font-bold uppercase text-base-content/50 mb-2">Source Context</h4>
                     <ul class="space-y-2">
                         {#each idea.sentences as sentence}
-                            <li class="text-sm border-l-2 border-primary pl-3 py-1 bg-base-200/50 rounded-r">
+                            <button class="text-sm text-left border-l-2 border-primary pl-3 py-1 bg-base-200/50 rounded-r cursor-pointer" 
+                            onclick={() => highlightsStore.scrollToSentence(sentence.sentenceId)}>
                                 {sentence.sentenceContent}
-                            </li>
+                            </button>
                         {/each}
                     </ul>
                 </div>

@@ -5,18 +5,29 @@ import {
     fetchIdeaExplanations
 } from '$lib/api/index';
 import { stompStore } from '$lib/stores/stomp.svelte';
+import { settingsStore } from '$lib/stores/settings.svelte';
+import { highlightsStore } from '$lib/stores/highlights.svelte';
 import type { Chapter, IdeaWithSentences, IdeaExplanationDTO } from '$lib/types';
 
 export class IdeasState {
     getChapter: () => Chapter;
+    getIsOffline: () => boolean;
     ideas = $state<IdeaWithSentences[]>([]);
     explanations = $state<Record<number, IdeaExplanationDTO[]>>({});
-    expandedIdea = $state<number | null>(null);
+    
+    get expandedIdea(): number | null {
+        return highlightsStore.expandedIdeaId;
+    }
+    set expandedIdea(val: number | null) {
+        highlightsStore.expandedIdeaId = val;
+    }
+    
     isLoading = $state(true);
     error = $state('');
 
-    constructor(getChapter: () => Chapter) {
+    constructor(getChapter: () => Chapter, getIsOffline: () => boolean) {
         this.getChapter = getChapter;
+        this.getIsOffline = getIsOffline;
         
         $effect(() => {
             if (this.getChapter()) {
@@ -33,6 +44,15 @@ export class IdeasState {
             if (completedIdeaJob) {
                 this.loadIdeas();
             }
+        });
+
+        $effect(() => {
+            highlightsStore.ideas = this.ideas;
+            const ideaIds = new Set<number>();
+            this.ideas.forEach(idea => {
+                idea.sentences?.forEach(s => ideaIds.add(s.sentenceId));
+            });
+            highlightsStore.ideaSentenceIds = ideaIds;
         });
 
         $effect(() => {
@@ -92,6 +112,37 @@ export class IdeasState {
     }
 
     async handleExplain(idea: IdeaWithSentences) {
+        if (settingsStore.forceOfflineLlm || this.getIsOffline()) {
+            try {
+                const { generateIdeaExplanation } = await import('$lib/llm/openaiCompatible');
+                const { fetchIdeaArguments } = await import('$lib/api/index');
+                
+                const argsDto = await fetchIdeaArguments(idea.idea.ideaId);
+                const args = argsDto.map(a => a.text);
+
+                const settings = {
+                    apiKey: settingsStore.llmApiKey,
+                    baseUrl: settingsStore.llmBaseUrl,
+                    model: settingsStore.llmModel
+                };
+                
+                const answer = await generateIdeaExplanation(settings, idea.idea.ideaTitle, args);
+                
+                const newExp: IdeaExplanationDTO = {
+                    id: Date.now(),
+                    ideaId: idea.idea.ideaId,
+                    text: answer
+                };
+                
+                const existing = this.explanations[idea.idea.ideaId] || [];
+                this.explanations[idea.idea.ideaId] = [newExp, ...existing];
+            } catch (e: any) {
+                console.error(e);
+                this.error = e.message || 'Failed to generate explanation offline';
+            }
+            return;
+        }
+
         try {
             const res = await createIdeaExplanation(idea.idea.ideaId, idea.idea.ideaTitle);
             if (res.mode === 'queued') {

@@ -7,7 +7,7 @@
     const login = store ?? createLoginStore();
 </script>
 
-<div class="{isEmbedded ? 'w-full h-full' : 'card bg-base-100 shadow-xl border border-base-200 max-w-md mx-auto mt-16'}">
+<div class="{isEmbedded ? 'w-full h-full flex items-center justify-center' : 'card bg-base-100 shadow-xl border border-base-200 max-w-md mx-auto mt-16'}">
     <div class="card-body {isEmbedded ? 'pt-4' : ''}">
         <h2 class="card-title text-2xl font-bold justify-center mb-4">Welcome Back</h2>
         

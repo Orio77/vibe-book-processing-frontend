@@ -3,7 +3,6 @@
     import Dropdown from "./Dropdown.svelte";
 
     const themes = [
-        { id: "default", label: "Default" },
         { id: "light", label: "Light" },
         { id: "dark", label: "Dark" },
         { id: "retro", label: "Retro" },
@@ -46,16 +45,25 @@
     {/snippet}
 
     {#snippet content()}
-        <ul class="menu menu-sm w-full p-0">
+        <ul class="menu menu-sm w-full p-0 gap-0.5">
             {#each themes as t (t.id)}
                 <li>
                     <button
-                        class="w-full justify-start {settingsStore.theme === t.id ? 'active bg-primary text-primary-content' : ''}"
+                        class="w-full justify-start gap-3 items-center py-2 px-3 {settingsStore.theme === t.id ? 'active bg-primary text-primary-content' : ''}"
                         onclick={() => {
                             settingsStore.setTheme(t.id);
                         }}
                     >
-                        {t.label}
+                        <div 
+                            data-theme={t.id === 'default' ? 'light' : t.id} 
+                            class="bg-base-100 rounded-md grid grid-cols-2 gap-0.5 p-1 shrink-0 shadow-sm"
+                        >   
+                            <span class="size-1 rounded-md bg-primary"></span>
+                            <span class="size-1 rounded-md bg-secondary"></span>
+                            <span class="size-1 rounded-md bg-accent"></span>
+                            <span class="size-1 rounded-md bg-neutral"></span>
+                        </div>
+                        <span class="text-sm">{t.label}</span>
                     </button>
                 </li>
             {/each}

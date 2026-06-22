@@ -7,6 +7,8 @@
     import { createLoginStore } from '$lib/stores/login.svelte';
     import { createRegisterStore } from '$lib/stores/register.svelte';
     import { authStore } from '$lib/stores/auth.svelte';
+    import Undulate from '../components/decoration/Undulate.svelte';
+    import GoogleSSO from '../components/auth/GoogleSSO.svelte';
 
     let showLogin = $state(true);
 
@@ -16,6 +18,8 @@
 </script>
 
 <div class="relative flex flex-col md:flex-row min-h-[85vh] items-center justify-center gap-12 max-w-5xl mx-auto py-12">
+
+    <Undulate></Undulate>
     <!-- Left: Text Block -->
     <div class="flex-1 space-y-6 text-center md:text-left">
         <h1 class="text-5xl font-bold leading-tight text-base-content">
@@ -87,6 +91,11 @@
                             <Register isEmbedded={true} store={registerStore} />
                         </div>
                     {/if}
+                    
+                </div>
+                <div class="flex items-center justify-center gap-4 p-2 bg-base-200/50 border-t border-base-200">
+                    <label class="text-sm font-normal">Or start fast using </label>
+                    <GoogleSSO />
                 </div>
             </div>
         {/if}

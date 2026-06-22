@@ -7,17 +7,18 @@
     import JobQueue from './sidebar/JobQueue.svelte';
     import BookCover from '../library/BookCover.svelte';
     import { getSummaryByChapterId, fetchIdeasByChapterId } from '$lib/api/index';
+    import { highlightsStore } from '$lib/stores/highlights.svelte';
     
-    let { pdf, chapters, currentChapter, isLoading, loadChapter, sentences }: {
+    let { pdf, chapters, currentChapter, isLoading, loadChapter, sentences, isOffline }: {
         pdf: PDF | null,
         chapters: Chapter[],
         currentChapter: Chapter | null,
         isLoading: boolean,
         loadChapter: (chapter: Chapter) => void,
-        sentences: Sentence[]
+        sentences: Sentence[],
+        isOffline: boolean
     } = $props();
 
-    let activeTab = $state<'toc' | 'summary' | 'ideas' | 'chat'>('toc');
 
     function getBookColors(title: string) {
         if (!title) return { color1: 'hsl(0, 100%, 72%)', color2: 'hsl(0, 100%, 50%)' };
@@ -73,12 +74,12 @@
 
         <!-- Tabs Header -->
         <div class="flex-shrink-0 border-b border-base-300">
-            <SidebarTabs bind:activeTab />
+            <SidebarTabs />
         </div>
 
         <!-- Scrollable Content Area -->
         <div class="flex-1 overflow-hidden relative">
-            {#if activeTab === 'toc'}
+            {#if highlightsStore.activeTab === 'toc'}
                 <ul class="menu p-4 h-full overflow-y-auto w-auto">
                     <li class="menu-title mt-2 text-base font-bold">Table of Contents</li>
                     
@@ -113,7 +114,7 @@
                                                 onclick={(e) => {
                                                     e.stopPropagation();
                                                     if (currentChapter?.id !== chapter.id) loadChapter(chapter);
-                                                    activeTab = 'summary';
+                                                    highlightsStore.openTab('summary');
                                                 }}
                                             >
                                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" /></svg>
@@ -126,7 +127,7 @@
                                                 onclick={(e) => {
                                                     e.stopPropagation();
                                                     if (currentChapter?.id !== chapter.id) loadChapter(chapter);
-                                                    activeTab = 'ideas';
+                                                    highlightsStore.openTab('ideas');
                                                 }}
                                             >
                                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.829 1.508-2.336 1.145-.683 1.954-1.848 1.954-3.141a4.5 4.5 0 00-4.5-4.5h-2.25a4.5 4.5 0 00-4.5 4.5c0 1.293.809 2.458 1.954 3.141.85.507 1.508 1.353 1.508 2.336v.192M10.5 22.5h3" /></svg>
@@ -138,21 +139,21 @@
                         </div>
                     {/if}
                 </ul>
-            {:else if activeTab === 'summary'}
+            {:else if highlightsStore.activeTab === 'summary'}
                 {#if currentChapter}
                     <SummaryTab chapter={currentChapter} />
                 {:else}
                     <div class="p-8 text-center text-base-content/50">Select a chapter first</div>
                 {/if}
-            {:else if activeTab === 'ideas'}
+            {:else if highlightsStore.activeTab === 'ideas'}
                 {#if currentChapter}
-                    <IdeasTab chapter={currentChapter} />
+                    <IdeasTab chapter={currentChapter} {isOffline} />
                 {:else}
                     <div class="p-8 text-center text-base-content/50">Select a chapter first</div>
                 {/if}
-            {:else if activeTab === 'chat'}
+            {:else if highlightsStore.activeTab === 'chat'}
                 {#if currentChapter}
-                    <ChatTab chapter={currentChapter} {sentences} />
+                    <ChatTab chapter={currentChapter} {sentences} {isOffline} />
                 {:else}
                     <div class="p-8 text-center text-base-content/50">Select a chapter first</div>
                 {/if}

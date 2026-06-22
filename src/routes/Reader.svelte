@@ -145,5 +145,5 @@
         />
     </div>
 
-    <ReaderSidebar {pdf} {chapters} {currentChapter} {isLoading} {loadChapter} {sentences} />
+    <ReaderSidebar {pdf} {chapters} {currentChapter} {isLoading} {loadChapter} {sentences} {isOffline} />
 </div>

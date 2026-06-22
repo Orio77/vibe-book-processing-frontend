@@ -4,10 +4,10 @@
     import IdeaItem from './IdeaItem.svelte';
     import { fade } from 'svelte/transition';
 
-    let { chapter }: { chapter: Chapter } = $props();
+    let { chapter, isOffline }: { chapter: Chapter; isOffline: boolean } = $props();
 
     // Create a new instance of the logic class, passing in a getter for the chapter
-    let state = new IdeasState(() => chapter);
+    let state = new IdeasState(() => chapter, () => isOffline);
 </script>
 
 <div class="flex flex-col h-full overflow-y-auto p-4 space-y-6">

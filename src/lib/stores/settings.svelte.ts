@@ -1,4 +1,5 @@
 const SETTINGS_STORAGE_KEY = 'bookProcessing.settings';
+import { saveOfflineLlmSettings } from '$lib/llm/settings';
 
 export type TextWidth = 'narrow' | 'medium' | 'wide';
 export type ScrollMode = 'vertical' | 'horizontal';
@@ -22,6 +23,10 @@ export interface SettingsData {
     scrollMode: ScrollMode;
     pageFlipping: boolean;
     theme: string;
+    llmApiKey: string;
+    llmBaseUrl: string;
+    llmModel: string;
+    forceOfflineLlm: boolean;
 }
 
 const DEFAULTS: SettingsData = {
@@ -31,7 +36,11 @@ const DEFAULTS: SettingsData = {
     textWidth: 'medium',
     scrollMode: 'vertical',
     pageFlipping: true,
-    theme: 'default',
+    theme: 'light',
+    llmApiKey: '',
+    llmBaseUrl: 'https://api.openai.com/v1',
+    llmModel: 'gpt-4o-mini',
+    forceOfflineLlm: false,
 };
 
 function loadFromStorage(): SettingsData {
@@ -57,6 +66,11 @@ class SettingsStore {
     scrollMode = $state<ScrollMode>(DEFAULTS.scrollMode);
     pageFlipping = $state(DEFAULTS.pageFlipping);
     theme = $state(DEFAULTS.theme);
+    llmApiKey = $state(DEFAULTS.llmApiKey);
+    llmBaseUrl = $state(DEFAULTS.llmBaseUrl);
+    llmModel = $state(DEFAULTS.llmModel);
+    forceOfflineLlm = $state(DEFAULTS.forceOfflineLlm);
+    private isInitialLoad = true;
 
     constructor() {
         const saved = loadFromStorage();
@@ -67,9 +81,14 @@ class SettingsStore {
         this.scrollMode = saved.scrollMode;
         this.pageFlipping = saved.pageFlipping;
         this.theme = saved.theme;
+        this.llmApiKey = saved.llmApiKey ?? DEFAULTS.llmApiKey;
+        this.llmBaseUrl = saved.llmBaseUrl ?? DEFAULTS.llmBaseUrl;
+        this.llmModel = saved.llmModel ?? DEFAULTS.llmModel;
+        this.forceOfflineLlm = saved.forceOfflineLlm ?? DEFAULTS.forceOfflineLlm;
 
         // Apply theme on load
         this.applyTheme();
+        this.isInitialLoad = false;
     }
 
     private persist() {
@@ -81,11 +100,29 @@ class SettingsStore {
             scrollMode: this.scrollMode,
             pageFlipping: this.pageFlipping,
             theme: this.theme,
+            llmApiKey: this.llmApiKey,
+            llmBaseUrl: this.llmBaseUrl,
+            llmModel: this.llmModel,
+            forceOfflineLlm: this.forceOfflineLlm,
+        });
+        saveOfflineLlmSettings({
+            apiKey: this.llmApiKey,
+            baseUrl: this.llmBaseUrl,
+            model: this.llmModel,
         });
     }
 
     private applyTheme() {
-        document.documentElement.setAttribute('data-theme', this.theme);
+        if (typeof document !== 'undefined') {
+            const doc = document as any;
+            if (!this.isInitialLoad && typeof doc.startViewTransition === 'function') {
+                doc.startViewTransition(() => {
+                    document.documentElement.setAttribute('data-theme', this.theme);
+                });
+            } else {
+                document.documentElement.setAttribute('data-theme', this.theme);
+            }
+        }
     }
 
     setFontFamily(value: FontFamily) {
@@ -124,6 +161,26 @@ class SettingsStore {
         this.persist();
     }
 
+    setLlmApiKey(value: string) {
+        this.llmApiKey = value;
+        this.persist();
+    }
+
+    setLlmBaseUrl(value: string) {
+        this.llmBaseUrl = value;
+        this.persist();
+    }
+
+    setLlmModel(value: string) {
+        this.llmModel = value;
+        this.persist();
+    }
+
+    setForceOfflineLlm(value: boolean) {
+        this.forceOfflineLlm = value;
+        this.persist();
+    }
+
     resetToDefaults() {
         this.fontFamily = DEFAULTS.fontFamily;
         this.fontSize = DEFAULTS.fontSize;
@@ -132,6 +189,10 @@ class SettingsStore {
         this.scrollMode = DEFAULTS.scrollMode;
         this.pageFlipping = DEFAULTS.pageFlipping;
         this.theme = DEFAULTS.theme;
+        this.llmApiKey = DEFAULTS.llmApiKey;
+        this.llmBaseUrl = DEFAULTS.llmBaseUrl;
+        this.llmModel = DEFAULTS.llmModel;
+        this.forceOfflineLlm = DEFAULTS.forceOfflineLlm;
         this.applyTheme();
         this.persist();
     }

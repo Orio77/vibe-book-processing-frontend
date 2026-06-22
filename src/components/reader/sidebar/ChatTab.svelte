@@ -5,16 +5,16 @@
     import { ChatState } from './chat.svelte';
     import ChatMessage from './ChatMessage.svelte';
 
-    let { chapter, sentences }: { chapter: Chapter; sentences: Sentence[] } = $props();
+    let { chapter, sentences, isOffline }: { chapter: Chapter; sentences: Sentence[]; isOffline: boolean } = $props();
 
-    let state = new ChatState(() => chapter, () => sentences);
+    let state = new ChatState(() => chapter, () => sentences, () => isOffline);
 </script>
 
 <div class="flex flex-col h-full overflow-hidden">
     <!-- Chat Header -->
     <div class="p-4 border-b border-base-300 shadow-sm flex-shrink-0 bg-base-100">
-        <h2 class="text-xl font-bold">Chapter Chat</h2>
-        <p class="text-xs text-base-content/60 mt-1">Ask questions about the current chapter.</p>
+        <h2 class="text-xl font-bold">Interactions</h2>
+        <p class="text-xs text-base-content/60 mt-1">Ask questions or request explanations.</p>
     </div>
 
     <!-- Messages Area -->
@@ -28,8 +28,8 @@
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-12 h-12 mb-2 opacity-50">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
                 </svg>
-                <p>No chat history yet.</p>
-                <p class="text-xs">Select text from the chapter to provide context, then ask a question below!</p>
+                <p>No interactions yet.</p>
+                <p class="text-xs">Select text from the chapter, then ask a question or request an explanation below!</p>
             </div>
         {:else}
             {#each state.responses as response}
@@ -38,10 +38,10 @@
         {/if}
 
         {#if state.isThinking}
-            <div class="chat chat-start" transition:slide>
-                <div class="chat-bubble bg-base-200 text-base-content text-sm flex items-center gap-2">
-                    <span class="loading loading-dots loading-xs"></span>
-                    Thinking...
+            <div class="card bg-base-200 border border-base-300 shadow-sm mb-4" transition:slide>
+                <div class="card-body p-4 flex flex-row items-center gap-3">
+                    <span class="loading loading-spinner text-primary loading-sm"></span>
+                    <span class="text-sm font-semibold text-base-content/70">Generating...</span>
                 </div>
             </div>
         {/if}
@@ -87,19 +87,21 @@
         <form class="flex gap-2" onsubmit={(e) => { e.preventDefault(); state.handleSend(); }}>
             <input 
                 type="text" 
-                placeholder={selectionStore.count > 0 ? "Ask about selected text..." : "Ask a general question..."}
+                placeholder="Leave empty to explain sentences..."
                 class="input input-bordered input-sm flex-1 focus:outline-primary"
                 bind:value={state.query}
                 disabled={state.isThinking}
             />
             <button 
                 type="submit" 
-                class="btn btn-primary btn-sm"
-                disabled={!state.query.trim() || state.isThinking}
+                class="btn btn-primary btn-sm w-20"
+                disabled={selectionStore.count === 0 || state.isThinking}
             >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
-                </svg>
+                {#if state.query.trim()}
+                    Ask
+                {:else}
+                    Explain
+                {/if}
             </button>
         </form>
     </div>
