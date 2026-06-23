@@ -1,6 +1,7 @@
 <script lang="ts">
     import { settingsStore, getFontFamilyString } from '$lib/stores/settings.svelte';
     import type { TextWidth, ScrollMode, FontFamily } from '$lib/stores/settings.svelte';
+    import { fade, fly } from 'svelte/transition';
     import Dropdown from './Dropdown.svelte';
 
     const fontOptions: { value: FontFamily; label: string }[] = [
@@ -22,12 +23,14 @@
         { value: 'horizontal', label: 'Horizontal' },
     ];
     
+    let activeTab: 'reader' | 'llm' = $state('reader');
+
     function closeDropdown() {
         (document.activeElement as HTMLElement)?.blur();
     }
 </script>
 
-<Dropdown contentClass="!fixed !top-20 !left-1/2 !-translate-x-1/2 !w-[95vw] sm:!absolute sm:!top-full sm:!left-auto sm:!right-0 sm:!translate-x-0 sm:!w-80 max-w-[360px] p-5 space-y-5">
+<Dropdown contentClass="!fixed !top-20 !left-1/2 !-translate-x-1/2 !w-[95vw] sm:!absolute sm:!top-full sm:!left-auto sm:!right-0 sm:!translate-x-0 sm:!w-80 max-w-[360px] p-5 space-y-5 select-none">
     {#snippet trigger()}
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -43,82 +46,96 @@
 
     {#snippet content()}
 
-        <!-- Font family -->
-        <div class="space-y-2">
-            <span class="text-sm font-semibold text-base-content">Font</span>
-            <div class="flex flex-wrap gap-2">
-                {#each fontOptions as opt (opt.value)}
-                    <button
-                        class="btn btn-sm {settingsStore.fontFamily === opt.value ? 'btn-primary' : 'btn-ghost border-base-300'}"
-                        style="font-family: {getFontFamilyString(opt.value)};"
-                        onclick={() => settingsStore.setFontFamily(opt.value)}
-                    >
-                        {opt.label}
-                    </button>
-                {/each}
+        <!-- Tab Switcher -->
+        <div role="tablist" class="tabs tabs-boxed bg-base-200 rounded-lg">
+            <button
+                role="tab"
+                class="tab {activeTab === 'reader' ? 'tab-active' : ''}"
+                onclick={() => activeTab = 'reader'}
+            >
+                Reading
+            </button>
+            <button
+                role="tab"
+                class="tab {activeTab === 'llm' ? 'tab-active' : ''}"
+                onclick={() => activeTab = 'llm'}
+            >
+                AI Features
+            </button>
+        </div>
+
+        <div class="grid overflow-hidden">
+        {#if activeTab === 'reader'}
+            <div class="space-y-5 col-start-1 row-start-1" out:fly={{ duration: 200, y: 10 }} in:fly={{ duration: 300, y: -10, delay: 200 }}>
+                <!-- Font family -->
+                <div class="space-y-2">
+                    <span class="text-sm font-semibold text-base-content">Font</span>
+                    <div class="flex flex-wrap gap-2">
+                        {#each fontOptions as opt (opt.value)}
+                            <button
+                                class="btn btn-sm {settingsStore.fontFamily === opt.value ? 'btn-primary' : 'btn-ghost border-base-300'}"
+                                style="font-family: {getFontFamilyString(opt.value)};"
+                                onclick={() => settingsStore.setFontFamily(opt.value)}
+                            >
+                                {opt.label}
+                            </button>
+                        {/each}
+                    </div>
+                </div>
+
+                <!-- Font size -->
+                <div class="space-y-2">
+                    <label class="text-sm font-semibold text-base-content" for="settings-font-size">
+                        Font size ({settingsStore.fontSize}px)
+                    </label>
+                    <input
+                        id="settings-font-size"
+                        type="range"
+                        min="12"
+                        max="32"
+                        step="1"
+                        value={settingsStore.fontSize}
+                        oninput={(e) => settingsStore.setFontSize(Number(e.currentTarget.value))}
+                        class="range range-primary range-sm w-full"
+                    />
+                </div>
+
+                <!-- Line spacing -->
+                <div class="space-y-2">
+                    <label class="text-sm font-semibold text-base-content" for="settings-line-spacing">
+                        Line spacing ({settingsStore.lineSpacing.toFixed(1)})
+                    </label>
+                    <input
+                        id="settings-line-spacing"
+                        type="range"
+                        min="1.0"
+                        max="3.0"
+                        step="0.1"
+                        value={settingsStore.lineSpacing}
+                        oninput={(e) => settingsStore.setLineSpacing(Number(e.currentTarget.value))}
+                        class="range range-primary range-sm w-full"
+                    />
+                </div>
+
+                <!-- Text width -->
+                <div class="space-y-2">
+                    <span class="text-sm font-semibold text-base-content">Text width</span>
+                    <div class="flex gap-2">
+                        {#each textWidthOptions as opt (opt.value)}
+                            <button
+                                class="btn btn-sm flex-1 {settingsStore.textWidth === opt.value ? 'btn-primary' : 'btn-ghost border-base-300'}"
+                                onclick={() => settingsStore.setTextWidth(opt.value)}
+                            >
+                                {opt.label}
+                            </button>
+                        {/each}
+                    </div>
+                </div>
             </div>
-        </div>
-
-        <!-- Font size -->
-        <div class="space-y-2">
-            <label class="text-sm font-semibold text-base-content" for="settings-font-size">
-                Font size ({settingsStore.fontSize}px)
-            </label>
-            <input
-                id="settings-font-size"
-                type="range"
-                min="12"
-                max="32"
-                step="1"
-                value={settingsStore.fontSize}
-                oninput={(e) => settingsStore.setFontSize(Number(e.currentTarget.value))}
-                class="range range-primary range-sm w-full"
-            />
-        </div>
-
-        <!-- Line spacing -->
-        <div class="space-y-2">
-            <label class="text-sm font-semibold text-base-content" for="settings-line-spacing">
-                Line spacing ({settingsStore.lineSpacing.toFixed(1)})
-            </label>
-            <input
-                id="settings-line-spacing"
-                type="range"
-                min="1.0"
-                max="3.0"
-                step="0.1"
-                value={settingsStore.lineSpacing}
-                oninput={(e) => settingsStore.setLineSpacing(Number(e.currentTarget.value))}
-                class="range range-primary range-sm w-full"
-            />
-        </div>
-
-        <!-- Text width -->
-        <div class="space-y-2">
-            <span class="text-sm font-semibold text-base-content">Text width</span>
-            <div class="flex gap-2">
-                {#each textWidthOptions as opt (opt.value)}
-                    <button
-                        class="btn btn-sm flex-1 {settingsStore.textWidth === opt.value ? 'btn-primary' : 'btn-ghost border-base-300'}"
-                        onclick={() => settingsStore.setTextWidth(opt.value)}
-                    >
-                        {opt.label}
-                    </button>
-                {/each}
-            </div>
-        </div>
-
-        <hr class="border-base-200" />
-
-        <!-- LLM Settings Collapse -->
-        <div class="collapse collapse-arrow border border-base-300 bg-base-100">
-            <input type="checkbox" /> 
-            <div class="collapse-title text-sm font-bold text-base-content">
-                Advanced Offline LLM
-            </div>
-            <div class="collapse-content space-y-4">
+        {:else}
+            <div class="space-y-5 col-start-1 row-start-1" out:fly={{ duration: 200, y: 10 }} in:fly={{ duration: 300, y: -10, delay: 200 }}>
                 <!-- LLM API Key Override Toggle -->
-                <div class="space-y-2 pt-2">
+                <div class="space-y-2">
                     <label class="label cursor-pointer p-0">
                         <span class="text-sm font-semibold text-base-content">Override with offline API Key</span>
                         <input
@@ -179,6 +196,7 @@
                     />
                 </div>
             </div>
+        {/if}
         </div>
 
         <hr class="border-base-200" />

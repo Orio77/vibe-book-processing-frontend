@@ -52,7 +52,7 @@
 <svelte:window bind:scrollY={scrollY} bind:innerHeight={innerHeight} onresize={updateScrollHeight} />
 
 <div 
-    class="fixed top-[65px] left-0 lg:left-80 right-0 z-[45] cursor-pointer group pb-8"
+    class="fixed top-[65px] left-0 md:left-96 right-0 z-[45] cursor-pointer group pb-8"
     onpointerdown={handlePointerDown}
     onpointermove={handlePointerMove}
     onpointerup={handlePointerUp}
@@ -65,7 +65,7 @@
     tabindex="0"
 >
     <!-- The actual bar -->
-    <div class="h-1.5 w-full bg-base-300/50 backdrop-blur transition-all group-hover:h-3 {isDraggingProgress ? 'h-3' : ''}">
+    <div class="h-1.5 bg-base-300/50 backdrop-blur transition-all group-hover:h-3 {isDraggingProgress ? 'h-3' : ''}">
         <div class="h-full bg-primary" style="width: {scrollProgress * 100}%"></div>
     </div>
 </div>

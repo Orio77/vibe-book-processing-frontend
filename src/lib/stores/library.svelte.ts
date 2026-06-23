@@ -17,6 +17,8 @@ export class LibraryStore {
     books = $state<UnifiedBook[]>([]);
     isLoading = $state(true);
     pendingJobs = $state<number[]>([]);
+    completedJobsMap = $state(new Map<number, string>());
+    isInitialLoad = $state(true);
     
     private interval: ReturnType<typeof setInterval> | null = null;
 
@@ -34,7 +36,7 @@ export class LibraryStore {
         };
     }
 
-    fetchLibraryData = async () => {
+    fetchLibraryData = async (updateState: boolean = true): Promise<UnifiedBook[]> => {
         this.isLoading = true;
         try {
             const [onlinePdfsResult, offlineBooksResult] = await Promise.allSettled([
@@ -74,9 +76,19 @@ export class LibraryStore {
                 }
             }
 
-            this.books = newBooks.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            const sortedBooks = newBooks.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            if (updateState) {
+                this.books = sortedBooks;
+                if (this.isInitialLoad) {
+                    setTimeout(() => {
+                        this.isInitialLoad = false;
+                    }, 1000);
+                }
+            }
+            return sortedBooks;
         } catch (e) {
             console.error("Failed to fetch library", e);
+            return [];
         } finally {
             this.isLoading = false;
         }
@@ -92,11 +104,16 @@ export class LibraryStore {
                 try {
                     const job = await fetchQueueJob(jobId);
                     if (job.status === 'COMPLETED' || job.status === 'FAILED' || job.status === 'CANCELLED') {
-                        removePendingUploadJobId(jobId);
-                        this.pendingJobs = this.pendingJobs.filter(id => id !== jobId);
-                        
-                        if (job.status === 'COMPLETED') {
-                            this.fetchLibraryData();
+                        if (job.status === 'COMPLETED' && job.resultId) {
+                            this.completedJobsMap.set(jobId, `online-${job.resultId}`);
+                            const newBooks = await this.fetchLibraryData(false);
+                            
+                            this.books = newBooks;
+                            removePendingUploadJobId(jobId);
+                            this.pendingJobs = this.pendingJobs.filter(id => id !== jobId);
+                        } else {
+                            removePendingUploadJobId(jobId);
+                            this.pendingJobs = this.pendingJobs.filter(id => id !== jobId);
                         }
                     }
                 } catch (e) {

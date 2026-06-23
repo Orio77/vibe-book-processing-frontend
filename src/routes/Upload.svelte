@@ -8,6 +8,7 @@
     import { parseOfflineBundleZip, saveOfflineBundleToLibrary } from '$lib/offline';
     import ErrorAlert from '../components/common/ErrorAlert.svelte';
     import * as pdfjsLib from 'pdfjs-dist';
+    import { fade, fly } from 'svelte/transition';
 
     pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
         'pdfjs-dist/build/pdf.worker.mjs',
@@ -126,7 +127,7 @@
         <ErrorAlert message={fileError} onDismiss={() => fileError = null} />
     </div>
 
-    <div class="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div class="flex flex-col gap-8" transition:fade>
         <!-- File Dropzone (Top) -->
         <div class="max-w-2xl mx-auto w-full">
             <FileDropzone bind:file hasError={!!fileError} />
@@ -134,7 +135,7 @@
 
         {#if file && !fileError && pdfPageCount !== null}
             <!-- Chapter Slider (Below) -->
-            <div class="w-full flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
+            <div class="w-full flex flex-col gap-4" transition:fly>
                 <ChapterSlider bind:dividers totalPages={pdfPageCount} />
                 
                 <button 

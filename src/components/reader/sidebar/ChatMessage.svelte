@@ -1,6 +1,6 @@
 <script lang="ts">
-    import type { PDFChatResponse } from '$lib/types';
-    import { highlightsStore } from '$lib/stores/highlights.svelte';
+    import type { PDFChatResponse } from "$lib/types";
+    import { highlightsStore } from "$lib/stores/highlights.svelte";
 
     let { response }: { response: PDFChatResponse } = $props();
 </script>
@@ -14,13 +14,18 @@
                 Explanation
             {/if}
         </h3>
-        <div class="text-sm leading-relaxed text-base-content mt-1 whitespace-pre-wrap">
+        <div
+            class="text-sm leading-relaxed text-base-content mt-1 whitespace-pre-wrap"
+        >
             {response.chatResponse}
         </div>
         {#if response.contextSentencesIds?.length > 0}
-            <button 
+            <button
                 class="text-xs font-semibold text-primary hover:underline mt-2 text-left"
-                onclick={() => highlightsStore.scrollToSentence(response.contextSentencesIds[0])}
+                onclick={() =>
+                    highlightsStore.scrollToSentence(
+                        response.contextSentencesIds[0],
+                    )}
             >
                 Based on {response.contextSentencesIds.length} sentence(s)
             </button>

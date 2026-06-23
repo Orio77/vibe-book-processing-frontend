@@ -108,30 +108,34 @@
                                         <!-- Quick Actions -->
                                         <div class="flex items-center px-2 gap-1 transition-opacity {currentChapter?.id === chapter.id ? 'opacity-100' : 'opacity-50 hover:opacity-100'}">
                                             <!-- Summary -->
-                                            <button 
-                                                class="btn btn-ghost btn-xs btn-square {currentChapter?.id === chapter.id ? 'text-primary-content hover:bg-white/20' : (chapterHasSummary[chapter.id] ? 'text-primary' : 'text-base-content/50 hover:bg-base-content/20')}"
-                                                title="View Summary"
-                                                onclick={(e) => {
-                                                    e.stopPropagation();
-                                                    if (currentChapter?.id !== chapter.id) loadChapter(chapter);
-                                                    highlightsStore.openTab('summary');
-                                                }}
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" /></svg>
-                                            </button>
+                                            <div class="tooltip tooltip-bottom" data-tip={isOffline && !chapterHasSummary[chapter.id] ? "You can't summarise entire chapter in offline mode" : 'View Summary'}>
+                                                <button 
+                                                    class="btn btn-ghost btn-xs btn-square {currentChapter?.id === chapter.id ? 'text-primary-content hover:bg-white/20' : (chapterHasSummary[chapter.id] ? 'text-primary' : 'text-base-content/50 hover:bg-base-content/20')}"
+                                                    disabled={isOffline && !chapterHasSummary[chapter.id]}
+                                                    onclick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (currentChapter?.id !== chapter.id) loadChapter(chapter);
+                                                        highlightsStore.openTab('summary');
+                                                    }}
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" /></svg>
+                                                </button>
+                                            </div>
                                             
                                             <!-- Ideas -->
-                                            <button 
-                                                class="btn btn-ghost btn-xs btn-square {currentChapter?.id === chapter.id ? 'text-primary-content hover:bg-white/20' : (chapterHasIdeas[chapter.id] ? 'text-accent' : 'text-base-content/50 hover:bg-base-content/20')}"
-                                                title="View Key Ideas"
-                                                onclick={(e) => {
-                                                    e.stopPropagation();
-                                                    if (currentChapter?.id !== chapter.id) loadChapter(chapter);
-                                                    highlightsStore.openTab('ideas');
-                                                }}
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.829 1.508-2.336 1.145-.683 1.954-1.848 1.954-3.141a4.5 4.5 0 00-4.5-4.5h-2.25a4.5 4.5 0 00-4.5 4.5c0 1.293.809 2.458 1.954 3.141.85.507 1.508 1.353 1.508 2.336v.192M10.5 22.5h3" /></svg>
-                                            </button>
+                                            <div class="tooltip tooltip-bottom" data-tip={isOffline && !chapterHasIdeas[chapter.id] ? "You can't extract ideas in offline mode" : 'View Key Ideas'}>
+                                                <button 
+                                                    class="btn btn-ghost btn-xs btn-square {currentChapter?.id === chapter.id ? 'text-primary-content hover:bg-white/20' : (chapterHasIdeas[chapter.id] ? 'text-accent' : 'text-base-content/50 hover:bg-base-content/20')}"
+                                                    disabled={isOffline && !chapterHasIdeas[chapter.id]}
+                                                    onclick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (currentChapter?.id !== chapter.id) loadChapter(chapter);
+                                                        highlightsStore.openTab('ideas');
+                                                    }}
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.829 1.508-2.336 1.145-.683 1.954-1.848 1.954-3.141a4.5 4.5 0 00-4.5-4.5h-2.25a4.5 4.5 0 00-4.5 4.5c0 1.293.809 2.458 1.954 3.141.85.507 1.508 1.353 1.508 2.336v.192M10.5 22.5h3" /></svg>
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </li>
@@ -141,7 +145,7 @@
                 </ul>
             {:else if highlightsStore.activeTab === 'summary'}
                 {#if currentChapter}
-                    <SummaryTab chapter={currentChapter} />
+                    <SummaryTab chapter={currentChapter} {isOffline} />
                 {:else}
                     <div class="p-8 text-center text-base-content/50">Select a chapter first</div>
                 {/if}

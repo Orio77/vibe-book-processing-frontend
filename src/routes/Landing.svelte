@@ -9,6 +9,7 @@
     import { authStore } from '$lib/stores/auth.svelte';
     import Undulate from '../components/decoration/Undulate.svelte';
     import GoogleSSO from '../components/auth/GoogleSSO.svelte';
+    import ThemeSelector from "../components/layout/ThemeSelector.svelte";
 
     let showLogin = $state(true);
 
@@ -17,16 +18,25 @@
     const registerStore = createRegisterStore();
 </script>
 
-<div class="relative flex flex-col md:flex-row min-h-[85vh] items-center justify-center gap-12 max-w-5xl mx-auto py-12">
-
-    <Undulate></Undulate>
+<div class="flex flex-col md:flex-row min-h-[85vh] items-center justify-center gap-12 max-w-5xl mx-auto py-12 overflow-hidden">
+    <div class="absolute top-5 right-5 z-50">
+        <ThemeSelector />
+    </div>
+    <div class="absolute top-0 left-0 w-full h-full overflow-hidden">
+        <div class="absolute -bottom-100 -left-100 pointer-events-none overflow-hidden flex items-center justify-center">
+            <Undulate />
+        </div>
+        <div class="absolute -top-100 -right-100 pointer-events-none overflow-hidden flex items-center justify-center">
+            <Undulate />
+        </div>
+    </div>
     <!-- Left: Text Block -->
-    <div class="flex-1 space-y-6 text-center md:text-left">
+    <div class="flex-1 space-y-6 text-center md:text-left" style="view-transition-name: landing-text;">
         <h1 class="text-5xl font-bold leading-tight text-base-content">
             Smarter Reading<br />with <span class="text-primary">AI Processing</span>
         </h1>
         <p class="text-lg text-base-content/70">
-            Upload your PDFs, automatically extract chapters, chat with your books, and generate intelligent summaries—all with full offline support.
+            Upload your PDFs, automatically extract chapters, chat with your books, and generate intelligent summaries - all with full offline support.
         </p>
         
         {#if !authStore.loggedIn}
@@ -42,7 +52,7 @@
     </div>
 
     <!-- Right: Auth Form or Logged-in state -->
-    <div class="flex-1 w-full max-w-md">
+    <div class="flex-1 w-full max-w-md" style="view-transition-name: landing-auth;">
         {#if authStore.loggedIn}
             <div class="card bg-base-100 shadow-xl border border-base-200 overflow-hidden" in:fade={{ duration: 300 }}>
                 <div class="card-body items-center text-center py-12 gap-4">
@@ -81,17 +91,16 @@
                 </div>
                 
                 <!-- Animated Content Area -->
-                <div class="relative h-[320px] w-full overflow-hidden">
+                <div class="grid overflow-hidden">
                     {#if showLogin}
-                        <div class="absolute inset-0 w-full h-full" in:fly={{ x: -20, duration: 300, delay: 150 }} out:fly={{ x: 20, duration: 150 }}>
+                        <div class="col-start-1 row-start-1 w-full" in:fly={{ x: -20, duration: 300, delay: 150 }} out:fly={{ x: 20, duration: 150 }}>
                             <Login isEmbedded={true} store={loginStore} />
                         </div>
                     {:else}
-                        <div class="absolute inset-0 w-full h-full" in:fly={{ x: 20, duration: 300, delay: 150 }} out:fly={{ x: -20, duration: 150 }}>
+                        <div class="col-start-1 row-start-1 w-full" in:fly={{ x: 20, duration: 300, delay: 150 }} out:fly={{ x: -20, duration: 150 }}>
                             <Register isEmbedded={true} store={registerStore} />
                         </div>
                     {/if}
-                    
                 </div>
                 <div class="flex items-center justify-center gap-4 p-2 bg-base-200/50 border-t border-base-200">
                     <label class="text-sm font-normal">Or start fast using </label>

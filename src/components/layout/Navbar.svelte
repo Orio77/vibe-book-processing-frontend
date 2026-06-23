@@ -80,7 +80,8 @@
         <ThemeSelector />
         {#if authStore.loggedIn}
             <button
-                class="btn btn-sm btn-ghost text-error"
+                class="btn btn-sm btn-ghost text-error tooltip tooltip-bottom tooltip-left"
+                data-tip={`Logged as ${authStore.email}` || 'Log out'}
                 onclick={() => authStore.logout()}
             >
                 <svg

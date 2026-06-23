@@ -4,7 +4,7 @@
     import SummaryItem from "./SummaryItem.svelte";
     import { fade } from "svelte/transition";
 
-    let { chapter }: { chapter: Chapter } = $props();
+    let { chapter, isOffline }: { chapter: Chapter; isOffline: boolean } = $props();
 
     let state = new SummaryState(() => chapter);
 </script>
@@ -13,13 +13,16 @@
     <div class="flex justify-between items-center">
         <h2 class="text-xl font-bold">Chapter Summary</h2>
         {#if !state.isLoading && !state.isGenerating && state.summaries.length === 0}
-            <button
-                class="btn btn-primary btn-sm"
-                onclick={() => state.handleGenerate()}
-                transition:fade={{ duration: 200 }}
-            >
-                Generate
-            </button>
+            <div class="tooltip tooltip-left" data-tip={isOffline ? "You can't summarise entire chapter in offline mode" : undefined}>
+                <button
+                    class="btn btn-primary btn-sm"
+                    onclick={() => state.handleGenerate()}
+                    disabled={isOffline}
+                    transition:fade={{ duration: 200 }}
+                >
+                    Generate
+                </button>
+            </div>
         {/if}
     </div>
 

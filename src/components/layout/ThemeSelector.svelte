@@ -4,15 +4,16 @@
 
     const themes = [
         { id: "light", label: "Light" },
-        { id: "dark", label: "Dark" },
+        { id: "black", label: "Dark" },
         { id: "retro", label: "Retro" },
         { id: "cyberpunk", label: "Cyberpunk" },
         { id: "valentine", label: "Valentine" },
-        { id: "aqua", label: "Aqua" },
-        { id: "synthwave", label: "Synthwave" },
+        { id: "luxury", label: "Luxury" },
+        { id: "coffee", label: "Coffee" },
         { id: "forest", label: "Forest" },
         { id: "lofi", label: "Lofi" },
         { id: "nord", label: "Nord" },
+        { id: "business", label: "Business" },
     ];
 </script>
 

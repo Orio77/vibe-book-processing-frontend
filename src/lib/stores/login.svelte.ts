@@ -12,14 +12,22 @@ export class LoginStore {
         e.preventDefault();
         this.errorMsg = '';
         this.isSubmitting = true;
-        
+
         try {
             await loginUser({ email: this.email, password: this.password });
             authStore.refresh();
             navigate('/library');
         } catch (e: any) {
             console.error("Login failed", e);
-            this.errorMsg = e.response?.data?.message || e.message || 'Login failed. Please check your credentials.';
+            const status = e.response?.status;
+            if (status === 401) {
+                this.errorMsg = 'Incorrect email or password. Please try again.';
+            } else if (status === 400) {
+                this.errorMsg = 'Please check your input. Password must be at least 6 characters.';
+            } else {
+                console.error(e.response?.data || e.message);
+                this.errorMsg = 'Login failed. Please try again later.';
+            }
         } finally {
             this.isSubmitting = false;
         }

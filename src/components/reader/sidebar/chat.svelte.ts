@@ -28,7 +28,7 @@ export class ChatState {
         $effect(() => {
             const chatIds = new Set<number>();
             this.responses.forEach(r => {
-                 r.contextSentencesIds?.forEach(id => chatIds.add(id));
+                r.contextSentencesIds?.forEach(id => chatIds.add(id));
             });
             highlightsStore.chatSentenceIds = chatIds;
         });
@@ -64,7 +64,7 @@ export class ChatState {
     async handleSend() {
         const chapter = this.getChapter();
         const sentences = this.getSentences();
-        
+
         // Build context from selection
         const context = sentences
             .filter(s => selectionStore.isSelected(s.id))
@@ -72,7 +72,7 @@ export class ChatState {
                 sentenceId: s.id,
                 sentenceContent: s.content
             }));
-            
+
         if (!chapter || context.length === 0) return;
 
         const currentQuery = this.query.trim();
@@ -86,10 +86,10 @@ export class ChatState {
                     baseUrl: settingsStore.llmBaseUrl,
                     model: settingsStore.llmModel
                 };
-                
+
                 // Call LLM directly from browser
                 const answer = await answerQueryWithContext(settings, currentQuery, context);
-                
+
                 // Add synthetic response to chat history
                 this.responses = [{
                     chatResponseId: Date.now(),
@@ -97,7 +97,7 @@ export class ChatState {
                     chatResponse: answer,
                     contextSentencesIds: context.map(c => c.sentenceId)
                 }, ...this.responses];
-                
+
                 this.query = '';
                 selectionStore.clearSelection();
                 selectionStore.setSelectionMode(false);

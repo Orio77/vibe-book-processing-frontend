@@ -63,6 +63,24 @@ export function isAuthenticated(): boolean {
     return true;
 }
 
+export function getAuthenticatedEmail(): string | null {
+    const token = getAuthToken();
+    if (!token || isJwtExpired(token)) return null;
+
+    const payload = decodeJwtPayload(token);
+    if (!payload) return null;
+
+    if (typeof payload.email === 'string') {
+        return payload.email;
+    }
+    
+    if (typeof payload.sub === 'string') {
+        return payload.sub;
+    }
+
+    return null;
+}
+
 export function extractJwtToken(payload: unknown): string | null {
     if (typeof payload === 'string') {
         const normalized = payload.trim();

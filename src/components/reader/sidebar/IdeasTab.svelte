@@ -14,13 +14,16 @@
     <div class="flex justify-between items-center">
         <h2 class="text-xl font-bold">Key Ideas</h2>
         {#if !state.isLoading && !state.isExtracting && state.ideas.length === 0}
-            <button 
-                class="btn btn-primary btn-sm"
-                onclick={() => state.handleExtract()}
-                transition:fade={{ duration: 200 }}
-            >
-                Extract
-            </button>
+            <div class="tooltip tooltip-left" data-tip={isOffline ? "You can't extract ideas in offline mode" : undefined}>
+                <button 
+                    class="btn btn-primary btn-sm"
+                    onclick={() => state.handleExtract()}
+                    disabled={isOffline}
+                    transition:fade={{ duration: 200 }}
+                >
+                    Extract
+                </button>
+            </div>
         {/if}
     </div>
 
