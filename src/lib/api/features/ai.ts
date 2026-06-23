@@ -3,7 +3,7 @@ import type {
     IdeaArgumentDTO,
     IdeaExplanationDTO,
     IdeaWithSentences,
-} from '@/types';
+} from '$lib/types';
 import apiClient from '../core/client';
 import { coerceNumber, emptyOn204, unwrapArrayPayload } from '../core/helpers';
 
@@ -91,56 +91,66 @@ export async function createIdeasExplanations(
     return { mode: 'ready' };
 }
 
-export async function fetchIdeasByChapterId(chapterId: number): Promise<IdeaWithSentences[]> {
-    interface RawIdeaDTO {
-        ideaId?: number | string;
-        id?: number | string;
-        ideaTitle?: string;
-        title?: string;
+interface RawIdeaDTO {
+    ideaId?: number | string;
+    id?: number | string;
+    ideaTitle?: string;
+    title?: string;
+}
+
+interface RawSentenceDTO {
+    sentenceId?: number | string;
+    id?: number | string;
+    sentenceContent?: string;
+    content?: string;
+}
+
+interface RawIdeaWithSentences {
+    idea?: RawIdeaDTO;
+    sentences?: RawSentenceDTO[];
+}
+
+function normalizeIdeaWithSentences(raw: RawIdeaWithSentences): IdeaWithSentences {
+    const rawIdeaId = raw.idea?.ideaId ?? raw.idea?.id;
+    const ideaId = coerceNumber(rawIdeaId);
+    if (ideaId === null) {
+        throw new TypeError('Idea id is missing in backend payload');
     }
 
-    interface RawSentenceDTO {
-        sentenceId?: number | string;
-        id?: number | string;
-        sentenceContent?: string;
-        content?: string;
-    }
+    const ideaTitle = raw.idea?.ideaTitle ?? raw.idea?.title ?? '';
 
-    interface RawIdeaWithSentences {
-        idea?: RawIdeaDTO;
-        sentences?: RawSentenceDTO[];
-    }
-
-    const normalizeIdeaWithSentences = (raw: RawIdeaWithSentences): IdeaWithSentences => {
-        const rawIdeaId = raw.idea?.ideaId ?? raw.idea?.id;
-        const ideaId = coerceNumber(rawIdeaId);
-        if (ideaId === null) {
-            throw new TypeError('Idea id is missing in backend payload');
+    const sentences = (raw.sentences ?? []).map((sentence) => {
+        const rawSentenceId = sentence.sentenceId ?? sentence.id;
+        const sentenceId = coerceNumber(rawSentenceId);
+        if (sentenceId === null) {
+            throw new TypeError('Sentence id is missing in idea payload');
         }
 
-        const ideaTitle = raw.idea?.ideaTitle ?? raw.idea?.title ?? '';
-
-        const sentences = (raw.sentences ?? []).map((sentence) => {
-            const rawSentenceId = sentence.sentenceId ?? sentence.id;
-            const sentenceId = coerceNumber(rawSentenceId);
-            if (sentenceId === null) {
-                throw new TypeError('Sentence id is missing in idea payload');
-            }
-
-            return {
-                sentenceId,
-                sentenceContent: sentence.sentenceContent ?? sentence.content ?? '',
-            };
-        });
-
         return {
-            idea: {
-                ideaId,
-                ideaTitle,
-            },
-            sentences,
+            sentenceId,
+            sentenceContent: sentence.sentenceContent ?? sentence.content ?? '',
         };
+    });
+
+    return {
+        idea: {
+            ideaId,
+            ideaTitle,
+        },
+        sentences,
     };
+}
+
+export async function fetchIdea(ideaId: number): Promise<IdeaWithSentences> {
+    const res = await apiClient.get<RawIdeaWithSentences>(`${PROCESS_URL}/idea/get/${ideaId}`);
+    return normalizeIdeaWithSentences(res.data);
+}
+
+export async function deleteIdea(ideaId: number): Promise<void> {
+    await apiClient.delete(`${PROCESS_URL}/idea/delete/${ideaId}`);
+}
+
+export async function fetchIdeasByChapterId(chapterId: number): Promise<IdeaWithSentences[]> {
 
     const res = await apiClient.get<RawIdeaWithSentences[]>(`${PROCESS_URL}/idea/get/all/${chapterId}`);
     const data = emptyOn204(res) as RawIdeaWithSentences[];
@@ -218,6 +228,24 @@ export async function fetchIdeaExplanations(ideaId: number): Promise<IdeaExplana
             return [];
         }
     });
+}
+
+export async function fetchIdeaExplanation(explanationId: number): Promise<IdeaExplanationDTO> {
+    const res = await apiClient.get<RawIdeaExplanation>(`${PROCESS_URL}/idea/explanations/${explanationId}`);
+    return normalizeIdeaExplanation(res.data);
+}
+
+export async function updateIdeaExplanation(explanationId: number, text: string): Promise<IdeaExplanationDTO> {
+    const res = await apiClient.put<RawIdeaExplanation>(
+        `${PROCESS_URL}/idea/explanations/${explanationId}`,
+        text,
+        { headers: { 'Content-Type': 'text/plain' } }
+    );
+    return normalizeIdeaExplanation(res.data);
+}
+
+export async function deleteIdeaExplanation(explanationId: number): Promise<void> {
+    await apiClient.delete(`${PROCESS_URL}/idea/explanations/${explanationId}`);
 }
 
 export async function markExamples(

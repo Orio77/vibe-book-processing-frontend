@@ -7,14 +7,14 @@ import type {
     IdeaWithSentences,
     PDFChatResponse,
     Sentence,
-} from '@/types';
+} from '$lib/types';
 import {
     OFFLINE_BUNDLE_SCHEMA_VERSION,
     OFFLINE_BUNDLE_SCHEMA_VERSION_LEGACY,
     type OfflineBookPayload,
     type OfflineBundleManifest,
     type ParsedOfflineBundle,
-} from '@/types/offlineBundle';
+} from '$lib/types/offlineBundle';
 import { buildParsedBundleFromBook } from './bundleFromBook';
 
 const SUPPORTED_OFFLINE_SCHEMA_VERSIONS = new Set<number>([

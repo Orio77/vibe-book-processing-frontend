@@ -1,5 +1,5 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
-import type { OfflineBookRecord } from '@/types/offlineLibrary';
+import type { OfflineBookRecord } from '$lib/types/offlineLibrary';
 
 const DB_NAME = 'book-offline-library';
 const DB_VERSION = 1;

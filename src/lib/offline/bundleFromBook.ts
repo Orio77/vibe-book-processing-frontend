@@ -1,5 +1,5 @@
-import type { Sentence } from '@/types';
-import type { OfflineBookPayload, OfflineBundleManifest, ParsedOfflineBundle } from '@/types/offlineBundle';
+import type { Sentence } from '$lib/types';
+import type { OfflineBookPayload, OfflineBundleManifest, ParsedOfflineBundle } from '$lib/types/offlineBundle';
 
 export function buildSentencesByPageMap(book: OfflineBookPayload): Map<number, Sentence[]> {
     const sentencesByPage = new Map<number, Sentence[]>();

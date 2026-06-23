@@ -1,5 +1,5 @@
 import { zipSync, strToU8 } from 'fflate';
-import type { OfflineBookRecord } from '@/types/offlineLibrary';
+import type { OfflineBookRecord } from '$lib/types/offlineLibrary';
 
 /** Build a study-pack ZIP from a library record (no API calls). */
 export function exportOfflineRecordToZipBlob(record: OfflineBookRecord): Blob {

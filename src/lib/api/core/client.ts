@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { clearAuthToken, getAuthToken } from './authToken';
+import { authStore } from '$lib/stores/auth.svelte';
 
 /**
  * Configured Axios instance.
@@ -84,13 +85,14 @@ apiClient.interceptors.response.use(
     (error: unknown) => {
         if (axios.isAxiosError(error) && error.response?.status === 401) {
             clearAuthToken();
+            authStore.refresh();
 
-            if (globalThis.location !== undefined) {
-                const isAuthRoute = globalThis.location.pathname.startsWith('/auth/');
-                if (!isAuthRoute) {
-                    globalThis.location.assign('/auth/login');
-                }
-            }
+            // if (globalThis.location !== undefined) {
+            //     const isAuthRoute = globalThis.location.pathname.startsWith('/auth/');
+            //     if (!isAuthRoute) {
+            //         globalThis.location.assign('/auth/login');
+            //     }
+            // }
         }
 
         return Promise.reject(error);

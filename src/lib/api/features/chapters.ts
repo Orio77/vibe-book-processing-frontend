@@ -1,4 +1,4 @@
-import type { Chapter, ChapterPageRange, Sentence } from '@/types';
+import type { Chapter, ChapterPageRange, Sentence } from '$lib/types';
 import apiClient from '../core/client';
 import { coerceNumber, emptyOn204, unwrapArrayPayload } from '../core/helpers';
 
@@ -107,6 +107,11 @@ function normalizeSentence(raw: RawSentence, fallbackPdfId: number | string): Se
         chapterId: resolvedChapterId,
         sourceSentenceId: coerceNumber(raw.sourceSentenceId ?? raw.sentenceId) ?? undefined,
     };
+}
+
+export async function fetchChapter(chapterId: number | string, fallbackPdfId: number | string = 0): Promise<Chapter> {
+    const res = await apiClient.get<RawChapter>(`/chapter/get/${chapterId}`);
+    return normalizeChapter(res.data, fallbackPdfId);
 }
 
 export async function fetchChapters(pdfId: number | string): Promise<Chapter[]> {

@@ -8,7 +8,7 @@ import {
     fetchIdeaArguments,
     fetchIdeaExplanations,
     fetchChatResponsesForChapter,
-} from '@/lib/api';
+} from '$lib/api';
 import type {
     Chapter,
     ChapterSummary,
@@ -18,12 +18,12 @@ import type {
     PDF,
     PDFChatResponse,
     Sentence,
-} from '@/types';
+} from '$lib/types';
 import {
     OFFLINE_BUNDLE_SCHEMA_VERSION,
     type OfflineBookPayload,
     type OfflineBundleManifest,
-} from '@/types/offlineBundle';
+} from '$lib/types/offlineBundle';
 
 const BUNDLE_PDF_ID = 1;
 const APP_VERSION = '0.0.0';

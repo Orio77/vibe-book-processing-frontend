@@ -14,6 +14,7 @@ export type { LoginRequest, RegisterRequest } from './features/auth';
 export {
     deletePdf,
     fetchAllPdfs,
+    fetchAllJobs,
     fetchPdf,
     fetchQueueJob,
     uploadPdf,
@@ -21,6 +22,7 @@ export {
 export type { QueueJob } from './features/pdf';
 
 export {
+    fetchChapter,
     fetchChapters,
     fetchPageSentences,
     fetchSentencesInRanges,
@@ -32,7 +34,11 @@ export {
     createIdeaExplanation,
     createIdeasExplanations,
     deleteChapterSummary,
+    deleteIdea,
+    deleteIdeaExplanation,
+    fetchIdea,
     fetchIdeaArguments,
+    fetchIdeaExplanation,
     fetchIdeaExplanations,
     fetchIdeasByChapterId,
     getChapterSummary,
@@ -40,6 +46,7 @@ export {
     markExamples,
     markKeyIdeas,
     processChapterContext,
+    updateIdeaExplanation,
 } from './features/ai';
 export type {
     ChapterSummaryDispatchResult,

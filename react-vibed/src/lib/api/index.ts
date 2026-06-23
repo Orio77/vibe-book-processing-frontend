@@ -1,0 +1,58 @@
+export { default as apiClient, resolveApiRootBaseUrl } from './core/client';
+export { getApiErrorMessage } from './core/helpers';
+
+export {
+    clearAuthToken,
+    getAuthToken,
+    isAuthenticated,
+    loginUser,
+    registerUser,
+    setAuthToken,
+} from './features/auth';
+export type { LoginRequest, RegisterRequest } from './features/auth';
+
+export {
+    deletePdf,
+    fetchAllPdfs,
+    fetchPdf,
+    fetchQueueJob,
+    uploadPdf,
+} from './features/pdf';
+export type { QueueJob } from './features/pdf';
+
+export {
+    fetchChapters,
+    fetchPageSentences,
+    fetchSentencesInRanges,
+} from './features/chapters';
+
+export {
+    createBookSummary,
+    createChapterSummary,
+    createIdeaExplanation,
+    createIdeasExplanations,
+    deleteChapterSummary,
+    fetchIdeaArguments,
+    fetchIdeaExplanations,
+    fetchIdeasByChapterId,
+    getChapterSummary,
+    getSummaryByChapterId,
+    markExamples,
+    markKeyIdeas,
+    processChapterContext,
+} from './features/ai';
+export type {
+    ChapterSummaryDispatchResult,
+    IdeaExplanationDispatchResult,
+    IdeaExtractionDispatchResult,
+    IdeasExplanationDispatchResult,
+} from './features/ai';
+
+export {
+    deleteChatResponse,
+    fetchChat,
+    fetchChatResponsesForChapter,
+    fetchExplanation,
+    updateChatResponse,
+} from './features/chat';
+export type { ChatDispatchResult, PDFChatRequest } from './features/chat';

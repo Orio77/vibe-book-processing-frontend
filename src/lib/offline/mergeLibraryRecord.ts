@@ -1,7 +1,7 @@
-import type { Chapter, PDFChatResponse } from '@/types';
-import type { OfflineBookPayload, OfflineBundleManifest } from '@/types/offlineBundle';
+import type { Chapter, PDFChatResponse } from '$lib/types';
+import type { OfflineBookPayload, OfflineBundleManifest } from '$lib/types/offlineBundle';
 import type { OfflineBundlePayload } from './buildExport';
-import type { OfflineBookRecord } from '@/types/offlineLibrary';
+import type { OfflineBookRecord } from '$lib/types/offlineLibrary';
 
 export class MergeOfflineBookError extends Error {
     constructor(message: string) {
